@@ -1,0 +1,3646 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Quản Lý Phun Xăm Thẩm Mỹ Ngọc Ánh</title>
+
+  <!-- PWA: cho phép "Cài đặt ứng dụng" chạy toàn màn hình, ẩn thanh địa chỉ (Android + iOS) -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1c1e24">
+  <link rel="icon" href="icon-192.png">
+  <!-- Riêng cho iOS Safari -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Ngọc Ánh PMU">
+  <link rel="apple-touch-icon" href="icon-192.png">
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Thư viện IndexedDB dung lượng lớn (lưu cục bộ trên máy) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+  <!-- Firebase: dùng để đăng nhập và đồng bộ dữ liệu qua nhiều thiết bị (xem hướng dẫn cấu hình trong file JS bên dưới) -->
+  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+  <style>
+    :root {
+      --primary-gold: #c5a059;
+      --primary-gold-dark: #9e7d3b;
+      --gold-gradient: linear-gradient(135deg, #d4af37 0%, #c5a059 50%, #9e7d3b 100%);
+      --bg-dark: #121316;
+      --bg-card: #1c1e24;
+      --bg-input: #252830;
+      --text-main: #f0f2f5;
+      --text-muted: #9ba1a6;
+      --border-color: #2f3440;
+      --success: #2ecc71;
+      --danger: #e74c3c;
+      --warning: #f39c12;
+      --zalo-blue: #0068ff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+    
+    body { 
+      background-color: var(--bg-dark); 
+      color: var(--text-main); 
+      padding-bottom: 90px; 
+      min-height: 100vh;
+      position: relative;
+    }
+
+    /* Header */
+    header {
+      background: var(--bg-card);
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .brand-box { display: flex; align-items: center; gap: 12px; }
+    .brand-logo { width: 46px; height: 46px; border-radius: 50%; border: 2px solid var(--primary-gold); object-fit: cover; background: #fff; box-shadow: 0 0 10px rgba(197, 160, 89, 0.4); }
+    .brand-title { font-size: 16px; font-weight: 700; color: var(--primary-gold); letter-spacing: 0.5px; }
+    .brand-slogan { font-size: 12px; color: var(--text-muted); }
+
+    /* Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--bg-card);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-around;
+      padding: 10px 0 12px 0;
+      z-index: 1000;
+    }
+    .nav-item {
+      color: var(--text-muted);
+      text-align: center;
+      font-size: 11px;
+      cursor: pointer;
+      flex: 1;
+      transition: 0.2s;
+    }
+    .nav-item i { font-size: 20px; display: block; margin-bottom: 4px; }
+    .nav-item.active { color: var(--primary-gold); font-weight: 600; }
+
+    /* Container */
+    .container { max-width: 850px; margin: 0 auto; padding: 18px 14px; position: relative; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Buttons */
+    .btn-gold {
+      background: var(--gold-gradient);
+      color: #121316;
+      border: none;
+      padding: 13px 20px;
+      border-radius: 9px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      font-size: 15px;
+      transition: opacity 0.2s;
+      box-shadow: 0 4px 12px rgba(197, 160, 89, 0.2);
+    }
+    .btn-gold:active { opacity: 0.85; transform: scale(0.99); }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 7px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+    }
+    .btn-outline:hover { border-color: var(--primary-gold); color: var(--primary-gold); }
+    
+    .btn-remind {
+      background: rgba(0, 104, 255, 0.15);
+      border: 1px solid var(--zalo-blue);
+      color: #4da3ff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      flex: 1;
+      transition: all 0.2s;
+    }
+    .btn-remind:hover { background: rgba(0, 104, 255, 0.3); }
+
+    .btn-call {
+      background: rgba(46, 204, 113, 0.15);
+      border: 1px solid var(--success);
+      color: var(--success);
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      flex: 1;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .btn-call:hover { background: rgba(46, 204, 113, 0.3); }
+
+    .btn-danger-outline {
+      background: transparent;
+      border: 1px solid var(--danger);
+      color: var(--danger);
+      padding: 7px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s;
+    }
+    .btn-danger-outline:hover {
+      background: rgba(231, 76, 60, 0.15);
+    }
+
+    /* Cards */
+    .card {
+      background: var(--bg-card);
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+
+    /* Home Hero */
+    .hero-banner {
+      text-align: center;
+      padding: 26px 15px;
+      background: linear-gradient(180deg, rgba(197, 160, 89, 0.18) 0%, rgba(28, 30, 36, 1) 100%);
+      border-radius: 16px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(197, 160, 89, 0.25);
+    }
+    .quick-add-btn {
+      width: 62px;
+      height: 62px;
+      border-radius: 50%;
+      background: var(--gold-gradient);
+      color: #121316;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 15px auto 0 auto;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(212, 175, 55, 0.35);
+      border: none;
+      transition: transform 0.2s;
+    }
+    .quick-add-btn:active { transform: scale(0.92); }
+
+    /* Form Inputs */
+    .form-group { margin-bottom: 14px; min-width: 0; }
+    .form-group label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+    .form-control {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 14px;
+    }
+    .form-control:focus { outline: none; border-color: var(--primary-gold); }
+
+    /* Tự động ngắt chữ và chỉnh dòng cho textarea */
+    textarea.form-control {
+      resize: vertical;
+      line-height: 1.5;
+    }
+    
+    /* Service Grid */
+    .service-btn-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .service-parent-btn {
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 10px 6px;
+      text-align: center;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: all 0.2s;
+    }
+    .service-parent-btn.active {
+      background: rgba(197, 160, 89, 0.25);
+      border-color: var(--primary-gold);
+      color: var(--primary-gold);
+    }
+    .sub-service-container {
+      background: var(--bg-dark);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 12px;
+    }
+    .sub-service-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .sub-chip {
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      padding: 7px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: var(--text-muted);
+    }
+    .sub-chip.selected {
+      background: var(--primary-gold);
+      color: #121316;
+      font-weight: bold;
+      border-color: var(--primary-gold);
+    }
+
+    /* Warranty Options */
+    .warranty-options { display: grid; grid-template-columns: 1.35fr repeat(5, 1fr); gap: 5px; }
+    .chip {
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      padding: 8px 1px;
+      text-align: center;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
+      user-select: none;
+      font-weight: 600;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      transition: all 0.2s;
+    }
+    .chip.selected {
+      background: var(--primary-gold);
+      border-color: var(--primary-gold);
+      color: #121316;
+      font-weight: 700;
+    }
+
+    /* Photo Box */
+    .photo-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 6px;
+    }
+    .photo-box {
+      border: 2px dashed var(--border-color);
+      border-radius: 10px;
+      padding: 6px;
+      text-align: center;
+      background-color: var(--bg-input);
+      min-height: 115px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .photo-box:hover { border-color: var(--primary-gold); }
+    .photo-box img {
+      width: 100%;
+      height: 105px;
+      object-fit: cover;
+      border-radius: 6px;
+      display: none;
+    }
+    .photo-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+    .photo-placeholder i {
+      font-size: 24px;
+      color: var(--primary-gold);
+    }
+    .btn-remove-photo {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background: rgba(231, 76, 60, 0.95);
+      color: #fff;
+      border: none;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      cursor: pointer;
+      z-index: 10;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 2000;
+      overflow-y: auto;
+      padding: 20px 12px;
+    }
+    .modal-content {
+      background: var(--bg-card);
+      max-width: 560px;
+      margin: 15px auto;
+      border-radius: 14px;
+      border: 1px solid var(--border-color);
+      padding: 22px 20px;
+      position: relative;
+    }
+    .modal-header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 12px;
+    }
+    .modal-close-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 15px;
+      transition: all 0.2s;
+    }
+    .modal-close-btn:hover {
+      color: #fff;
+      border-color: var(--primary-gold);
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-success { background: rgba(46, 204, 113, 0.2); color: var(--success); }
+    .badge-warning { background: rgba(243, 156, 18, 0.2); color: var(--warning); }
+    .badge-danger { background: rgba(231, 76, 60, 0.25); color: var(--danger); border: 1px solid rgba(231, 76, 60, 0.4); }
+    .badge-secondary { background: rgba(155, 161, 166, 0.2); color: var(--text-muted); }
+
+    /* Debt specific Box */
+    .debt-panel {
+      background: rgba(37, 40, 48, 0.85);
+      border: 1px dashed var(--border-color);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 14px;
+    }
+    .debt-quick-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 8px 6px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+    .debt-quick-btn:hover {
+      border-color: var(--primary-gold);
+      color: var(--primary-gold);
+    }
+
+    /* Warranty Action Button */
+    .btn-warranty-status {
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--warning);
+      background: rgba(243, 156, 18, 0.15);
+      color: var(--warning);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      flex: 1.4;
+      transition: all 0.2s;
+    }
+    .btn-warranty-status:hover { opacity: 0.9; }
+    .btn-warranty-status.done {
+      border-color: var(--success);
+      background: rgba(46, 204, 113, 0.2);
+      color: var(--success);
+    }
+
+    /* Warranty Sub-Item */
+    .warranty-sub-item {
+      background: var(--bg-input);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 8px;
+      border-left: 3px solid var(--primary-gold);
+    }
+    .warranty-sub-item.overdue { border-left-color: var(--danger); }
+    .warranty-sub-item.completed { border-left-color: var(--success); }
+    
+    .warranty-actions-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .warranty-accordion-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      color: var(--primary-gold);
+      font-size: 12px;
+      background: var(--bg-dark);
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .warranty-chevron { transition: transform 0.3s ease; }
+    .warranty-chevron.open { transform: rotate(180deg); }
+    .warranty-details-collapse {
+      display: none;
+      margin-top: 6px;
+      animation: fadeIn 0.25s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Customer Items */
+    .customer-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.15s;
+    }
+    .customer-item:hover { background: rgba(255,255,255,0.02); }
+
+    /* Grid Stats */
+    .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+    .stat-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; }
+    .stat-card .value { font-size: 18px; font-weight: bold; color: var(--primary-gold); margin-top: 4px; }
+
+    /* Detail Images */
+    .detail-images {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .detail-img-box {
+      text-align: center;
+      background: var(--bg-dark);
+      padding: 6px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+    .detail-img-box img {
+      width: 100%;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .detail-img-box img:hover { transform: scale(1.03); }
+    .detail-img-box span {
+      font-size: 11px;
+      color: var(--primary-gold);
+      display: block;
+      margin-top: 4px;
+    }
+
+    /* Lightbox Modal */
+    #imageViewerModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.92);
+      z-index: 3000;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      padding: 15px;
+    }
+    #imageViewerImg {
+      max-width: 95%;
+      max-height: 80vh;
+      border-radius: 8px;
+      border: 2px solid var(--primary-gold);
+      object-fit: contain;
+      box-shadow: 0 0 25px rgba(197, 160, 89, 0.5);
+    }
+
+    /* ============================================================
+       GIAO DIỆN CHO MÀN HÌNH MÁY TÍNH (không ảnh hưởng điện thoại)
+       ============================================================ */
+    @media (min-width: 900px) {
+      .container { max-width: 1100px; padding: 26px 24px; }
+      header { padding: 16px 26px; }
+
+      /* Thanh điều hướng: thu gọn theo khung nội dung, bo góc nổi lên như thanh công cụ */
+      .bottom-nav {
+        max-width: 1100px;
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.35);
+        padding: 12px 0 14px 0;
+      }
+      .nav-item { padding: 4px 12px; border-radius: 10px; transition: background 0.15s; }
+      .nav-item:hover { background: rgba(255, 255, 255, 0.05); }
+
+      /* Danh sách khách hàng & Trang chủ: dùng lưới 2 cột cho đỡ trống trải */
+      #customerList, #homeRecentList {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        align-items: start;
+      }
+      #customerList .card, #homeRecentList > .card { margin-bottom: 0; }
+
+      /* Danh sách bảo hành: cũng chia lưới, mỗi khách 1 khối riêng */
+      #warrantyList {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        align-items: start;
+      }
+      #warrantyList > .card { margin-bottom: 0; }
+    }
+
+    @media (min-width: 1300px) {
+      .container { max-width: 1300px; }
+      #customerList, #homeRecentList, #warrantyList {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="brand-box">
+      <img id="brandLogo" class="brand-logo" src="" alt="Logo">
+      <div>
+        <div class="brand-title" id="brandTitle">Phun Xăm Thẩm Mỹ Ngọc Ánh</div>
+        <div class="brand-slogan" id="brandSlogan">Phun xăm thẩm mỹ Ngọc Ánh xin chào quý khách</div>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div id="cloudSyncStatus" style="font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; cursor: pointer;" onclick="openSettingsModal()" title="Bấm để mở cài đặt đồng bộ">
+        <i class="fa-solid fa-hard-drive"></i> <span id="cloudSyncStatusText">Chỉ lưu máy này</span>
+      </div>
+      <button class="btn-outline" onclick="openSettingsModal()"><i class="fa-solid fa-gear"></i> Cài đặt</button>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <div class="container">
+
+    <!-- 1. TAB TRANG CHỦ -->
+    <div id="tab-home" class="tab-content active">
+      <div id="backupReminderBanner" style="display: none;"></div>
+      <div class="hero-banner">
+        <h2 style="color: var(--primary-gold); margin-bottom: 8px;">Cửa Hàng Ngọc Ánh</h2>
+        <p style="color: var(--text-muted); font-size: 13px;">Hệ thống quản lý & chăm sóc khách hàng phun xăm</p>
+        <button class="quick-add-btn" onclick="openAddCustomerModal()"><i class="fa-solid fa-plus"></i></button>
+        <div style="font-size: 13px; font-weight: 600; margin-top: 10px; color: var(--primary-gold);">Thêm khách hàng mới</div>
+      </div>
+
+      <h3 style="margin-bottom: 12px; font-size: 15px;"><i class="fa-solid fa-clock-rotate-left"></i> Khách hàng gần đây</h3>
+      <div id="homeRecentList"></div>
+    </div>
+
+    <!-- 2. TAB KHÁCH HÀNG -->
+    <div id="tab-customers" class="tab-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h3 style="font-size: 16px; color: var(--primary-gold);"><i class="fa-solid fa-users"></i> Hồ sơ khách hàng</h3>
+        <button class="btn-gold" style="padding: 8px 14px; font-size: 13px; width: auto;" onclick="openAddCustomerModal()"><i class="fa-solid fa-user-plus"></i> Thêm khách</button>
+      </div>
+      <div class="form-group">
+        <input type="text" id="customerSearchInput" class="form-control" placeholder="Tìm theo Tên, SĐT, Địa chỉ..." oninput="renderCustomerList()">
+      </div>
+      <div id="customerSelectBar" style="display: none;"></div>
+      <div id="customerList"></div>
+    </div>
+
+    <!-- 3. TAB BẢO HÀNH -->
+    <!-- TAB LỊCH HẸN -->
+    <div id="tab-appointments" class="tab-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h3 style="font-size: 16px; color: var(--primary-gold);"><i class="fa-solid fa-calendar-check"></i> Lịch hẹn khách</h3>
+        <button class="btn-gold" style="padding: 8px 14px; font-size: 13px; width: auto;" onclick="openAppointmentModal()"><i class="fa-solid fa-calendar-plus"></i> Thêm lịch hẹn</button>
+      </div>
+      <div class="form-group">
+        <input type="text" id="appointmentSearchInput" class="form-control" placeholder="Tìm theo Tên, SĐT, Dịch vụ..." oninput="renderAppointmentList()">
+      </div>
+      <div id="appointmentList"></div>
+    </div>
+
+    <div id="tab-warranty" class="tab-content">
+      <h3 style="font-size: 16px; color: var(--primary-gold); margin-bottom: 12px;"><i class="fa-solid fa-shield-halved"></i> Danh sách bảo hành & Nhắc lịch</h3>
+      
+      <div class="form-group">
+        <input type="text" id="warrantySearchInput" class="form-control" placeholder="Tìm theo Tên, SĐT, Địa chỉ, Dịch vụ..." oninput="renderWarrantyList()">
+      </div>
+      <div id="warrantyList"></div>
+    </div>
+
+    <!-- 4. TAB DOANH THU -->
+    <div id="tab-revenue" class="tab-content">
+      <div id="revenueLockScreen" style="text-align: center; padding: 40px 10px;">
+        <i class="fa-solid fa-lock" style="font-size: 40px; color: var(--primary-gold); margin-bottom: 15px;"></i>
+        <h3>Khu vực bảo mật doanh thu</h3>
+        <p style="color: var(--text-muted); font-size: 13px; margin: 8px 0 12px 0;">Vui lòng nhập mật mã (Mặc định: <strong>123456</strong>)</p>
+        <p style="color: var(--text-muted); font-size: 11px; margin: 0 0 16px 0;">Lớp khoá này chỉ che tạm màn hình, không mã hoá dữ liệu bên trong.</p>
+        <div style="max-width: 260px; margin: 0 auto;">
+          <input type="password" id="passcodeInput" class="form-control" placeholder="Nhập mật mã..." style="text-align: center; font-size: 18px; letter-spacing: 4px; margin-bottom: 12px;">
+          <button class="btn-gold" onclick="unlockRevenue()"><i class="fa-solid fa-key"></i> Mở khóa</button>
+        </div>
+      </div>
+
+      <div id="revenueContent" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <h3 style="font-size: 16px; color: var(--primary-gold);"><i class="fa-solid fa-wallet"></i> Báo cáo doanh thu</h3>
+          <button class="btn-outline" style="font-size: 12px;" onclick="lockRevenue()"><i class="fa-solid fa-lock"></i> Khóa lại</button>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div style="font-size: 12px; color: var(--text-muted);">Doanh thu hôm nay (Thực thu)</div>
+            <div class="value" id="revToday">0 đ</div>
+          </div>
+          <div class="stat-card">
+            <div style="font-size: 12px; color: var(--text-muted);">Doanh thu tháng này (Thực thu)</div>
+            <div class="value" id="revMonth">0 đ</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h4 style="font-size: 14px; margin-bottom: 12px;"><i class="fa-solid fa-filter"></i> Lọc theo khoảng ngày</h4>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+            <div>
+              <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 5px;">Từ ngày</label>
+              <input type="date" id="revStartDate" class="form-control">
+            </div>
+            <div>
+              <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 5px;">Đến ngày</label>
+              <input type="date" id="revEndDate" class="form-control">
+            </div>
+          </div>
+          <button class="btn-gold" style="padding: 10px;" onclick="filterRevenue()"><i class="fa-solid fa-magnifying-glass"></i> Xem thống kê</button>
+          <div style="margin-top: 12px; font-weight: bold; text-align: right; color: var(--primary-gold); font-size: 15px;" id="filteredRevResult">Tổng: 0 đ</div>
+        </div>
+
+        <div class="card">
+          <h4 style="font-size: 14px; margin-bottom: 10px;">Thống kê theo loại dịch vụ</h4>
+          <div id="serviceStatsList"></div>
+        </div>
+
+        <div class="card">
+          <h4 style="font-size: 14px; margin-bottom: 10px;">Doanh thu theo từng khách hàng</h4>
+          <div id="customerRevList"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODAL: THÊM / SỬA KHÁCH HÀNG -->
+  <div id="customerModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header-top">
+        <h3 id="modalTitle" style="color: var(--primary-gold); font-size: 17px;">Thêm khách hàng mới</h3>
+        <div class="modal-close-btn" onclick="closeModal('customerModal')"><i class="fa-solid fa-xmark"></i></div>
+      </div>
+      
+      <input type="hidden" id="custEditId">
+      <input type="hidden" id="custSessionEditId">
+      <input type="hidden" id="isAddingSessionOnly" value="false">
+
+      <div id="personalInfoFields">
+        <div class="form-group">
+          <label>Họ và tên (*)</label>
+          <input type="text" id="custName" class="form-control" placeholder="Ví dụ: Nguyễn Ngọc Ánh">
+        </div>
+        <div class="form-group">
+          <label>Số điện thoại (*)</label>
+          <input type="tel" id="custPhone" class="form-control" placeholder="Ví dụ: 0908123456">
+        </div>
+        <div class="form-group">
+          <label>Địa chỉ</label>
+          <input type="text" id="custAddress" class="form-control" placeholder="Ví dụ: Kênh 7...">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Dịch vụ thực hiện (* Nhấn nhóm để chọn chi tiết)</label>
+        <div class="service-btn-grid">
+          <div class="service-parent-btn active" id="btn-grp-moi" onclick="toggleServiceGroup('moi')">
+            <span>Môi</span> <i class="fa-solid fa-chevron-down" style="font-size: 10px;"></i>
+          </div>
+          <div class="service-parent-btn" id="btn-grp-may" onclick="toggleServiceGroup('may')">
+            <span>Mày</span> <i class="fa-solid fa-chevron-down" style="font-size: 10px;"></i>
+          </div>
+          <div class="service-parent-btn" id="btn-grp-mi" onclick="toggleServiceGroup('mi')">
+            <span>Mí mắt</span> <i class="fa-solid fa-chevron-down" style="font-size: 10px;"></i>
+          </div>
+          <div class="service-parent-btn" id="btn-grp-combo" onclick="toggleServiceGroup('combo')">
+            <span>Combo</span> <i class="fa-solid fa-chevron-down" style="font-size: 10px;"></i>
+          </div>
+          <div class="service-parent-btn" id="btn-grp-nhuhoa" onclick="toggleServiceGroup('nhuhoa')">
+            <span>Nhũ hoa</span> <i class="fa-solid fa-chevron-down" style="font-size: 10px;"></i>
+          </div>
+          <div class="service-parent-btn" id="btn-grp-xoa" onclick="toggleServiceGroup('xoa')">
+            <span>Xóa</span> <i class="fa-solid fa-chevron-down" style="font-size: 10px;"></i>
+          </div>
+        </div>
+
+        <div class="sub-service-container" id="subServiceContainer">
+          <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;" id="subServiceTitle">Chọn loại dịch vụ Môi:</div>
+          <div class="sub-service-grid" id="subServiceGrid"></div>
+        </div>
+        <input type="hidden" id="custService" value="Phun môi">
+        <div style="font-size: 12px; color: var(--primary-gold); margin-top: -6px; margin-bottom: 10px;">
+          Dịch vụ đã chọn: <strong id="displaySelectedService">Phun môi</strong>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Tình trạng ban đầu</label>
+        <textarea id="custPreStatus" class="form-control" rows="2" placeholder="Ví dụ: Môi thâm viền, mày lệch..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Giải pháp thực hiện</label>
+        <textarea id="custProcess" class="form-control" rows="2" placeholder="Ví dụ: Khử thâm cam tươi..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Màu đã pha</label>
+        <textarea id="custColorMix" class="form-control" rows="2" placeholder="Ví dụ: Đỏ cherry + cam đào..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Hình ảnh đối chiếu (Trước & Sau khi làm)</label>
+        <div class="photo-section">
+          <div class="photo-box" id="boxBefore" onclick="triggerPhotoSelect('before')">
+            <button type="button" class="btn-remove-photo" id="btnDelBefore" title="Xóa ảnh trước" onclick="event.stopPropagation(); removePhoto('before')">✕</button>
+            <div class="photo-placeholder" id="textBefore">
+              <i class="fa-solid fa-camera-retro"></i>
+              <span>Chụp / Tải ảnh Trước</span>
+            </div>
+            <img id="previewBefore" alt="Ảnh Trước" onclick="event.stopPropagation(); openImageViewer(this.src, 'Ảnh Trước Khi Làm')">
+            <input type="file" id="imgBeforeInput" accept="image/*" style="display:none;" onchange="handleImageUpload(event, 'previewBefore', 'textBefore', 'before')">
+          </div>
+
+          <div class="photo-box" id="boxAfter" onclick="triggerPhotoSelect('after')">
+            <button type="button" class="btn-remove-photo" id="btnDelAfter" title="Xóa ảnh sau" onclick="event.stopPropagation(); removePhoto('after')">✕</button>
+            <div class="photo-placeholder" id="textAfter">
+              <i class="fa-solid fa-camera-retro"></i>
+              <span>Chụp / Tải ảnh Sau</span>
+            </div>
+            <img id="previewAfter" alt="Ảnh Sau" onclick="event.stopPropagation(); openImageViewer(this.src, 'Ảnh Sau Khi Làm')">
+            <input type="file" id="imgAfterInput" accept="image/*" style="display:none;" onchange="handleImageUpload(event, 'previewAfter', 'textAfter', 'after')">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Thời gian làm</label>
+        <input type="datetime-local" id="custDate" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Tổng giá tiền (VNĐ)</label>
+        <input type="text" id="custPrice" class="form-control" placeholder="2.500.000" oninput="handlePriceOrPaidChange()">
+      </div>
+
+      <!-- KHU VỰC QUẢN LÝ CÔNG NỢ ĐƯỢC BỔ SUNG -->
+      <div class="debt-panel">
+        <label style="font-size: 13px; font-weight: 700; color: var(--primary-gold); display: block; margin-bottom: 10px;"><i class="fa-solid fa-receipt"></i> Thanh toán & Công nợ</label>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+          <button type="button" class="debt-quick-btn" onclick="setFullPayment()"><i class="fa-solid fa-check"></i> Trả đủ</button>
+          <button type="button" class="debt-quick-btn" onclick="setZeroPayment()"><i class="fa-solid fa-hand-holding-dollar"></i> Nợ 100%</button>
+        </div>
+        <button type="button" class="debt-quick-btn" style="width: 100%; padding: 10px; font-size: 13px; font-weight: 600; border-color: var(--primary-gold); color: var(--primary-gold); background: rgba(212, 175, 55, 0.08); margin-bottom: 14px;" onclick="saveCustomerData(true)">
+          <i class="fa-solid fa-qrcode"></i> Lưu & Tạo mã thanh toán
+        </button>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div>
+            <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Đã trả (VNĐ)</label>
+            <input type="text" id="custPaid" class="form-control" placeholder="0" oninput="handlePriceOrPaidChange()" style="border-color: rgba(46, 204, 113, 0.4);">
+            <div style="font-size: 10.5px; color: var(--text-muted); margin-top: 4px; font-style: italic;">Để trống = chưa trả</div>
+          </div>
+          <div>
+            <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Nợ còn lại (VNĐ)</label>
+            <input type="text" id="custDebt" class="form-control" placeholder="0 đ" readonly style="background: var(--bg-dark); color: var(--danger); font-weight: bold; border-color: rgba(231, 76, 60, 0.4);">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Thời hạn bảo hành (Tháng)</label>
+        <div class="warranty-options">
+          <div class="chip" onclick="selectWarranty(this, 0)">Không BH</div>
+          <div class="chip selected" onclick="selectWarranty(this, 1)">1T</div>
+          <div class="chip" onclick="selectWarranty(this, 2)">2T</div>
+          <div class="chip" onclick="selectWarranty(this, 3)">3T</div>
+          <div class="chip" onclick="selectWarranty(this, 6)">6T</div>
+          <div class="chip" onclick="selectWarranty(this, 12)">12T</div>
+        </div>
+        <input type="hidden" id="custWarrantyMonths" value="1">
+      </div>
+
+      <button class="btn-gold" style="margin-top: 10px;" onclick="saveCustomerData()"><i class="fa-solid fa-floppy-disk"></i> Lưu hồ sơ</button>
+    </div>
+  </div>
+
+  <!-- MODAL: XEM CHI TIẾT KHÁCH HÀNG -->
+  <div id="customerDetailModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header-top">
+        <h3 style="color: var(--primary-gold); font-size: 17px;"><i class="fa-solid fa-id-card"></i> Hồ sơ chi tiết</h3>
+        <div class="modal-close-btn" onclick="closeModal('customerDetailModal')" title="Đóng cửa sổ">
+          <i class="fa-solid fa-xmark"></i>
+        </div>
+      </div>
+      <div id="customerDetailContent"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: THÊM / SỬA LỊCH HẸN -->
+  <div id="appointmentModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header-top">
+        <h3 id="appointmentModalTitle" style="color: var(--primary-gold); font-size: 17px;"><i class="fa-solid fa-calendar-plus"></i> Thêm lịch hẹn</h3>
+        <div class="modal-close-btn" onclick="closeModal('appointmentModal')"><i class="fa-solid fa-xmark"></i></div>
+      </div>
+      <input type="hidden" id="apptEditId">
+
+      <div class="form-group">
+        <label>Tên khách hàng</label>
+        <input type="text" id="apptName" class="form-control" placeholder="Nhập tên khách...">
+      </div>
+      <div class="form-group">
+        <label>Số điện thoại</label>
+        <input type="tel" id="apptPhone" class="form-control" placeholder="Nhập số điện thoại...">
+      </div>
+      <div class="form-group">
+        <label>Dịch vụ dự kiến</label>
+        <input type="text" id="apptService" class="form-control" placeholder="VD: Phun mày, Nâng mũi...">
+      </div>
+      <div class="form-group">
+        <label>Ngày giờ hẹn</label>
+        <input type="datetime-local" id="apptDateTime" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Ghi chú</label>
+        <textarea id="apptNote" class="form-control" rows="2" placeholder="Ghi chú thêm (nếu có)..."></textarea>
+      </div>
+
+      <button class="btn-gold" onclick="saveAppointmentData()"><i class="fa-solid fa-check"></i> Lưu lịch hẹn</button>
+    </div>
+  </div>
+
+  <!-- MODAL: GỬI TIN NHẮN NHẮC BẢO HÀNH (GIỮ LẠI CHO TAB BẢO HÀNH) -->
+  <div id="remindModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header-top">
+        <h3 style="color: var(--primary-gold); font-size: 16px;"><i class="fa-solid fa-paper-plane"></i> Gửi tin nhắn nhắc bảo hành</h3>
+        <div class="modal-close-btn" onclick="closeModal('remindModal')"><i class="fa-solid fa-xmark"></i></div>
+      </div>
+
+      <div style="font-size: 13px; margin-bottom: 12px; line-height: 1.5; color: var(--text-muted);">
+        Khách hàng: <strong id="remindCustName" style="color:#fff;"></strong> &bull; SĐT: <strong id="remindCustPhone" style="color:var(--primary-gold);"></strong>
+      </div>
+
+      <div class="form-group">
+        <label>Nội dung tin nhắn:</label>
+        <textarea id="remindMessageBody" class="form-control" style="height: 140px; line-height: 1.5; font-size: 13px;"></textarea>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+        <button class="btn-gold" style="background: #0068ff; color: #fff; padding: 11px;" onclick="sendViaZalo()">
+          <i class="fa-solid fa-comment-dots"></i> Gửi Zalo
+        </button>
+        <button class="btn-gold" style="background: #27ae60; color: #fff; padding: 11px;" onclick="sendViaSMS()">
+          <i class="fa-solid fa-message"></i> Gửi SMS
+        </button>
+      </div>
+      
+      <button class="btn-outline" style="width: 100%; justify-content: center; padding: 10px;" onclick="copyReminderText()">
+        <i class="fa-regular fa-copy"></i> Sao chép nội dung tin nhắn
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL XEM ẢNH PHÓNG TO (LIGHTBOX) -->
+  <div id="imageViewerModal" onclick="closeImageViewer()">
+    <div style="width: 100%; max-width: 700px; text-align: right; margin-bottom: 8px;">
+      <span style="color: #fff; font-size: 24px; cursor: pointer; padding: 5px 12px; background: rgba(255,255,255,0.15); border-radius: 50%;"><i class="fa-solid fa-xmark"></i></span>
+    </div>
+    <img id="imageViewerImg" src="" alt="Ảnh phóng to" onclick="event.stopPropagation()">
+    <div id="imageViewerCaption" style="color: var(--primary-gold); margin-top: 10px; font-weight: 600; font-size: 14px;"></div>
+  </div>
+
+  <!-- MODAL: NHẮC VIỆC HÀNG NGÀY (LỊCH HẸN + BẢO HÀNH) -->
+  <div id="autoWarrantyReminderModal" class="modal">
+    <div class="modal-content" style="max-width: 420px;">
+      <div class="modal-header-top">
+        <h3 style="color: var(--primary-gold); font-size: 17px;"><i class="fa-solid fa-bell"></i> Nhắc việc hôm nay</h3>
+      </div>
+      <div id="autoAppointmentReminderSection" style="display: none; margin-bottom: 16px;">
+        <p style="font-size: 12.5px; font-weight: 700; color: #fff; margin-bottom: 8px;"><i class="fa-solid fa-calendar-check" style="color: var(--primary-gold);"></i> Lịch hẹn hôm nay</p>
+        <div id="autoAppointmentReminderList" style="max-height: 32vh; overflow-y: auto;"></div>
+      </div>
+      <div id="autoWarrantyReminderSection" style="display: none;">
+        <p style="font-size: 12.5px; font-weight: 700; color: #fff; margin-bottom: 8px;"><i class="fa-solid fa-shield-halved" style="color: var(--primary-gold);"></i> Bảo hành sắp/quá hạn</p>
+        <div id="autoWarrantyReminderList" style="max-height: 32vh; overflow-y: auto;"></div>
+      </div>
+      <button class="btn-gold" style="margin-top: 12px;" onclick="closeAutoWarrantyReminderPopup()"><i class="fa-solid fa-check"></i> OK</button>
+    </div>
+  </div>
+
+  <!-- MODAL: MÃ QR THANH TOÁN -->
+  <div id="paymentQrModal" class="modal">
+    <div class="modal-content" style="max-width: 380px; text-align: center;">
+      <div class="modal-header-top">
+        <h3 style="color: var(--primary-gold); font-size: 17px;"><i class="fa-solid fa-qrcode"></i> Quét mã để thanh toán</h3>
+        <div class="modal-close-btn" onclick="closeModal('paymentQrModal')"><i class="fa-solid fa-xmark"></i></div>
+      </div>
+      <div id="paymentQrContent"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: ĐĂNG NHẬP TÀI KHOẢN ĐỒNG BỘ (CLOUD) -->
+  <div id="cloudLoginModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header-top">
+        <h3 style="color: var(--primary-gold); font-size: 17px;"><i class="fa-solid fa-cloud"></i> Đăng nhập đồng bộ dữ liệu</h3>
+        <div class="modal-close-btn" onclick="closeModal('cloudLoginModal')"><i class="fa-solid fa-xmark"></i></div>
+      </div>
+      <p style="font-size: 12.5px; color: var(--text-muted); line-height: 1.6; margin-bottom: 14px;">
+        Đăng nhập cùng một tài khoản trên mọi thiết bị (điện thoại, máy tính...) để dữ liệu tự động đồng bộ hai chiều. Lần đầu dùng, hãy bấm "Tạo tài khoản mới" để tạo tài khoản riêng cho cửa hàng.
+      </p>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="cloudEmail" class="form-control" placeholder="vidu@gmail.com">
+      </div>
+      <div class="form-group">
+        <label>Mật khẩu (tối thiểu 6 ký tự)</label>
+        <input type="password" id="cloudPassword" class="form-control" placeholder="••••••">
+      </div>
+      <div id="cloudLoginError" style="color: var(--danger); font-size: 12px; margin-bottom: 10px; display: none;"></div>
+      <div id="cloudRetryBox" style="display: none; margin-bottom: 10px;">
+        <button type="button" class="btn-outline" style="width: 100%; justify-content: center; padding: 9px; font-size: 12px;" onclick="cloudRetryConnect()"><i class="fa-solid fa-rotate"></i> Thử kết nối lại</button>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <button class="btn-outline" style="justify-content: center; padding: 11px;" onclick="cloudSignUp()"><i class="fa-solid fa-user-plus"></i> Tạo tài khoản mới</button>
+        <button class="btn-gold" onclick="cloudSignIn()"><i class="fa-solid fa-right-to-bracket"></i> Đăng nhập</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CÀI ĐẶT THƯƠNG HIỆU & SAO LƯU -->
+  <div id="settingsModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header-top">
+        <h3 style="color: var(--primary-gold); font-size: 17px;"><i class="fa-solid fa-sliders"></i> Cài đặt & Sao lưu dữ liệu</h3>
+        <div class="modal-close-btn" onclick="closeModal('settingsModal')"><i class="fa-solid fa-xmark"></i></div>
+      </div>
+      
+      <div class="form-group">
+        <label>Tên cửa hàng</label>
+        <input type="text" id="settingTitle" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Slogan chào mừng</label>
+        <input type="text" id="settingSlogan" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Đường dẫn ảnh logo (URL hoặc để trống)</label>
+        <input type="text" id="settingLogo" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Mẫu tin nhắn nhắc bảo hành ({TEN_KH}, {DICH_VU}, {HAN_BH}, {TEN_TIEM})</label>
+        <textarea id="settingMsgTemplate" class="form-control" style="height: 90px; font-size: 13px;"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Đổi mật mã doanh thu (Bỏ trống nếu không đổi)</label>
+        <input type="password" id="settingPasscode" class="form-control" placeholder="Nhập mật khẩu mới...">
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 5px; line-height: 1.5;">
+          <i class="fa-solid fa-circle-info"></i> Lưu ý: mật mã này chỉ để che tạm màn hình doanh thu khỏi người nhìn thoáng qua, không mã hoá dữ liệu. Không dùng để bảo vệ dữ liệu nhạy cảm thật sự.
+        </div>
+      </div>
+
+      <!-- Khu vực cấu hình thông tin nhận tiền (VietQR) -->
+      <div style="background: var(--bg-dark); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); margin: 15px 0;">
+        <label style="color: var(--primary-gold); font-weight: 600; margin-bottom: 8px; display: block;"><i class="fa-solid fa-qrcode"></i> Thông tin nhận thanh toán (VietQR)</label>
+        <div class="form-group" style="margin-bottom: 8px;">
+          <label style="font-size: 12px;">Ngân hàng</label>
+          <select id="settingBankId" class="form-control"></select>
+        </div>
+        <div class="form-group" style="margin-bottom: 8px;">
+          <label style="font-size: 12px;">Số tài khoản</label>
+          <input type="text" id="settingBankAccountNo" class="form-control" placeholder="VD: 0123456789">
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 12px;">Tên chủ tài khoản (không dấu, in hoa)</label>
+          <input type="text" id="settingBankAccountName" class="form-control" placeholder="VD: NGUYEN NGOC ANH">
+        </div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">Điền đúng 1 lần, sau đó bấm nút "Thanh toán" trong hồ sơ khách hàng sẽ tự tạo mã QR với đúng số tiền cần thu.</div>
+      </div>
+
+      <!-- Khu vực đồng bộ đám mây (nhiều thiết bị) -->
+      <div id="cloudSettingsBox" style="background: var(--bg-dark); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); margin: 15px 0;">
+        <label style="color: var(--primary-gold); font-weight: 600; margin-bottom: 8px; display: block;"><i class="fa-solid fa-cloud"></i> Đồng bộ nhiều thiết bị</label>
+        <div id="cloudSettingsContent" style="font-size: 12px; color: var(--text-muted);">Đang kiểm tra cấu hình...</div>
+      </div>
+
+      <!-- Khu vực sao lưu / phục hồi file dữ liệu -->
+      <div style="background: var(--bg-dark); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); margin: 15px 0;">
+        <label style="color: var(--primary-gold); font-weight: 600; margin-bottom: 8px; display: block;"><i class="fa-solid fa-cloud-arrow-down"></i> Sao lưu & Phục hồi bộ nhớ</label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <button type="button" class="btn-outline" style="justify-content: center; padding: 8px;" onclick="exportDataFile()"><i class="fa-solid fa-download"></i> Tải file sao lưu</button>
+          <button type="button" class="btn-outline" style="justify-content: center; padding: 8px;" onclick="document.getElementById('importFileInput').click()"><i class="fa-solid fa-upload"></i> Nhập file dữ liệu</button>
+        </div>
+        <input type="file" id="importFileInput" accept=".json" style="display: none;" onchange="importDataFile(event)">
+
+        <div style="margin-top: 12px; border-top: 1px dashed var(--border-color); padding-top: 10px;">
+          <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">Nếu nút "Nhập file dữ liệu" không phản hồi trên điện thoại: mở file sao lưu (.json) bằng ứng dụng ghi chú/trình soạn thảo bất kỳ, copy toàn bộ nội dung, rồi dán vào ô bên dưới.</div>
+          <textarea id="importPasteText" class="form-control" rows="3" placeholder="Dán nội dung file sao lưu (.json) vào đây..."></textarea>
+          <button type="button" class="btn-outline" style="width: 100%; justify-content: center; padding: 8px; margin-top: 6px;" onclick="importDataFromPaste()"><i class="fa-solid fa-paste"></i> Phục hồi từ nội dung đã dán</button>
+        </div>
+      </div>
+
+      <button class="btn-gold" style="margin-top: 5px;" onclick="saveBrandSettings()"><i class="fa-solid fa-check"></i> Cập nhật</button>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAVIGATION -->
+  <div class="bottom-nav">
+    <div class="nav-item active" onclick="switchTab('home', this)">
+      <i class="fa-solid fa-house"></i>
+      <span>Trang chủ</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('customers', this)">
+      <i class="fa-solid fa-users"></i>
+      <span>Khách hàng</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('appointments', this)">
+      <i class="fa-solid fa-calendar-check"></i>
+      <span>Lịch hẹn</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('warranty', this)">
+      <i class="fa-solid fa-shield-halved"></i>
+      <span>Bảo hành</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('revenue', this)">
+      <i class="fa-solid fa-wallet"></i>
+      <span>Doanh thu</span>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT -->
+  <script>
+    const defaultBrandLogo = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 500 500' width='500' height='500'><circle cx='250' cy='250' r='242' fill='%23ffffff' stroke='%23d4af37' stroke-width='4'/><circle cx='250' cy='250' r='232' fill='none' stroke='%23aa7c11' stroke-width='1.5'/><circle cx='242' cy='92' r='14' fill='%23fff' stroke='%23c5a059' stroke-width='3'/><circle cx='242' cy='92' r='8' fill='%23e6ca85'/><path d='M200,85 C140,110 105,170 105,250 C105,330 145,395 210,415 C140,380 120,310 120,250 C120,180 150,110 200,85 Z' fill='url(%23goldGrad)'/><path d='M235,110 L155,360 L185,360 L235,190 L285,360 L315,360 Z' fill='url(%23goldGrad)'/><path d='M235,210 Q235,360 235,360 L245,360 L245,210 Z' fill='url(%23goldGrad)'/><path d='M330,240 L330,360 L345,360 L345,240 Z' fill='url(%23goldGrad)'/><g stroke='%23aa7c11' fill='%23fbf5e6' stroke-width='2'><path d='M375,180 C365,140 380,115 385,110 C390,115 405,140 395,180 Z'/><path d='M360,180 C340,150 345,130 350,125 C365,140 375,160 375,180 Z'/><path d='M410,180 C430,150 425,130 420,125 C405,140 395,160 395,180 Z'/><path d='M385,180 C380,240 360,290 415,340 C370,300 375,240 385,180 Z' fill='none'/><path d='M400,280 C415,250 430,260 420,285 C410,295 400,285 400,280 Z'/></g><text x='250' y='435' font-family='serif' font-size='32' font-weight='bold' fill='%237a5b18' text-anchor='middle' letter-spacing='8'>NGỌC ÁNH</text><text x='250' y='465' font-family='sans-serif' font-size='13' font-weight='600' fill='%239e7d3b' text-anchor='middle' letter-spacing='4'>— PHUN XĂM THẨM MỸ —</text><defs><linearGradient id='goldGrad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%23e6ca85'/><stop offset='50%25' stop-color='%23c5a059'/><stop offset='100%25' stop-color='%238c641d'/></linearGradient></defs></svg>";
+
+    const defaultReminderTemplate = "Dạ em chào chị {TEN_KH}, tiệm {TEN_TIEM} xin phép nhắc lịch kiểm tra và dặm bảo hành dịch vụ {DICH_VU} của chị ạ. Hạn bảo hành của chị đến ngày {HAN_BH}. Chị sắp xếp ghé tiệm để bên em hỗ trợ kiểm tra và dặm lại đẹp nhất cho chị nhé!";
+
+    localforage.config({
+      name: 'NgocAnh_PMU_App',
+      storeName: 'pmu_data_store'
+    });
+
+    /* ============================================================================
+       ĐỒNG BỘ NHIỀU THIẾT BỊ VỚI FIREBASE (TUỲ CHỌN)
+       ============================================================================
+       App vẫn hoạt động BÌNH THƯỜNG ở chế độ chỉ-lưu-máy-này nếu bạn không cấu hình
+       phần này. Muốn bật đồng bộ nhiều thiết bị (điện thoại + máy tính, nhiều nhân
+       viên...), làm theo các bước sau (miễn phí với quy mô 1 tiệm nhỏ):
+
+       BƯỚC 1: Vào https://console.firebase.google.com → "Add project" → đặt tên
+               bất kỳ (vd: ngoc-anh-pmu) → tạo project (có thể tắt Google Analytics).
+
+       BƯỚC 2: Trong project vừa tạo, vào mục "Build" → "Authentication" →
+               "Get started" → chọn "Email/Password" → bật (Enable) → Save.
+
+       BƯỚC 3: Vào "Build" → "Firestore Database" → "Create database" → chọn chế độ
+               "Start in production mode" → chọn khu vực gần VN (vd: asia-southeast1)
+               → Create.
+
+       BƯỚC 4: Vào tab "Rules" của Firestore, XOÁ hết nội dung mặc định và dán đúng
+               đoạn quy tắc bảo mật sau (chỉ chủ tài khoản mới đọc/ghi được dữ liệu
+               của chính mình), rồi bấm "Publish":
+
+          rules_version = '2';
+          service cloud.firestore {
+            match /databases/{database}/documents {
+              match /users/{uid} {
+                allow read, write: if request.auth != null && request.auth.uid == uid;
+              }
+              match /users/{uid}/customers/{customerId} {
+                allow read, write: if request.auth != null && request.auth.uid == uid;
+              }
+              match /users/{uid}/appointments/{apptId} {
+                allow read, write: if request.auth != null && request.auth.uid == uid;
+              }
+            }
+          }
+
+       BƯỚC 5: Vào biểu tượng bánh răng ⚙ (Project settings) → cuộn xuống mục
+               "Your apps" → bấm biểu tượng </> (Web) → đặt tên bất kỳ → Register app.
+               Firebase sẽ hiện ra một đoạn config dạng:
+                 const firebaseConfig = { apiKey: "...", authDomain: "...", ... };
+               Copy đúng các giá trị đó, dán thay thế vào object firebaseConfig ngay
+               bên dưới đây (giữ nguyên tên các khoá, chỉ thay giá trị).
+
+       BƯỚC 6: Lưu file, mở lại app → vào Cài đặt → mục "Đồng bộ nhiều thiết bị" →
+               bấm "Tạo tài khoản mới" (chỉ làm 1 lần đầu) → đăng nhập bằng cùng
+               email/mật khẩu đó trên các thiết bị khác là xong.
+
+       Lưu ý: mỗi khách hàng được lưu thành 1 tài liệu riêng trên Firestore để tránh
+       vượt giới hạn dung lượng (1MB/tài liệu) của Firestore khi có nhiều ảnh. Nếu
+       một khách có QUÁ NHIỀU lượt làm kèm ảnh khiến vượt giới hạn, app sẽ báo và
+       vẫn lưu được ở máy hiện tại, chỉ tạm thời không đồng bộ hồ sơ đó lên mây.
+    ============================================================================ */
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBfqd2mahd5MvZX4c2Ab5M5xD_cX16OF8w",
+      authDomain: "phunxamthammy-pmu.firebaseapp.com",
+      projectId: "phunxamthammy-pmu",
+      storageBucket: "phunxamthammy-pmu.firebasestorage.app",
+      messagingSenderId: "716343551019",
+      appId: "1:716343551019:web:402486546579eb8390366e"
+    };
+
+    let cloudAuth = null;
+    let cloudFirestore = null;
+    let cloudUser = null;
+    let cloudUnsubCustomers = null;
+    let cloudUnsubAppointments = null;
+    let cloudUnsubBrand = null;
+    let cloudFirstSyncDone = false;
+
+    function isCloudConfigured() {
+      return firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY";
+    }
+
+    function setCloudStatus(text, iconClass) {
+      const textEl = document.getElementById('cloudSyncStatusText');
+      const boxEl = document.getElementById('cloudSyncStatus');
+      if (textEl) textEl.innerText = text;
+      if (boxEl) boxEl.querySelector('i').className = iconClass;
+    }
+
+    function initFirebase() {
+      if (!isCloudConfigured()) {
+        setCloudStatus('Chỉ lưu máy này', 'fa-solid fa-hard-drive');
+        renderCloudSettingsBox();
+        return;
+      }
+      try {
+        firebase.initializeApp(firebaseConfig);
+        cloudAuth = firebase.auth();
+        cloudFirestore = firebase.firestore();
+
+        cloudAuth.onAuthStateChanged(function(user) {
+          cloudUser = user;
+          if (user) {
+            setCloudStatus('Đã đăng nhập - Đang đồng bộ', 'fa-solid fa-cloud-arrow-up');
+            closeModal('cloudLoginModal');
+            startCloudSync();
+          } else {
+            setCloudStatus('Chưa đăng nhập đồng bộ', 'fa-solid fa-cloud-arrow-down');
+            stopCloudSync();
+          }
+          renderCloudSettingsBox();
+        });
+      } catch (err) {
+        console.error('Lỗi khởi tạo Firebase:', err);
+        setCloudStatus('Lỗi cấu hình đồng bộ', 'fa-solid fa-triangle-exclamation');
+      }
+    }
+
+    function renderCloudSettingsBox() {
+      const el = document.getElementById('cloudSettingsContent');
+      if (!el) return;
+
+      if (!isCloudConfigured()) {
+        el.innerHTML = `
+          Chưa cấu hình đồng bộ nhiều thiết bị. Dữ liệu hiện chỉ lưu trên máy này.
+          Xem hướng dẫn cấu hình Firebase trong phần đầu file mã nguồn (thẻ &lt;script&gt;).
+        `;
+        return;
+      }
+
+      if (cloudUser) {
+        el.innerHTML = `
+          <div style="margin-bottom: 10px;">Đang đăng nhập: <strong style="color: #fff;">${escapeHtml(cloudUser.email)}</strong></div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <button type="button" class="btn-outline" style="justify-content: center; padding: 8px; font-size: 11px;" onclick="cloudPushAllToCloud()"><i class="fa-solid fa-cloud-arrow-up"></i> Đẩy toàn bộ dữ liệu máy này lên mây</button>
+            <button type="button" class="btn-danger-outline" style="justify-content: center; padding: 8px; font-size: 11px;" onclick="cloudSignOut()"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</button>
+          </div>
+        `;
+      } else {
+        el.innerHTML = `
+          <div style="margin-bottom: 10px;">Chưa đăng nhập. Đăng nhập cùng 1 tài khoản trên mọi thiết bị để tự động đồng bộ.</div>
+          <button type="button" class="btn-gold" style="padding: 9px; font-size: 13px;" onclick="closeModal('settingsModal'); document.getElementById('cloudLoginModal').style.display='block';"><i class="fa-solid fa-right-to-bracket"></i> Đăng nhập / Tạo tài khoản</button>
+        `;
+      }
+    }
+
+    function cloudShowError(msg) {
+      const el = document.getElementById('cloudLoginError');
+      el.innerText = msg;
+      el.style.display = 'block';
+    }
+
+    function cloudRetryConnect() {
+      document.getElementById('cloudLoginError').style.display = 'none';
+      document.getElementById('cloudRetryBox').style.display = 'none';
+      if (typeof firebase === 'undefined') {
+        cloudShowError('Vẫn chưa tải được thư viện đồng bộ. Hãy kiểm tra kết nối mạng, sau đó đóng hẳn app rồi mở lại (thử kết nối lại không đủ nếu thư viện chưa tải được ngay từ đầu).');
+        document.getElementById('cloudRetryBox').style.display = 'block';
+        return;
+      }
+      if (!cloudAuth) {
+        initFirebase();
+      }
+      if (cloudAuth) {
+        cloudShowError('Đã kết nối lại! Vui lòng bấm Đăng nhập hoặc Tạo tài khoản mới.');
+      }
+    }
+
+    function cloudSignUp() {
+      document.getElementById('cloudLoginError').style.display = 'none';
+      if (!cloudAuth) {
+        cloudShowError('Chưa kết nối được máy chủ đồng bộ. Kiểm tra điện thoại/máy tính đang có mạng Internet rồi đóng app, mở lại và thử tiếp.');
+        document.getElementById('cloudRetryBox').style.display = 'block';
+        return;
+      }
+      const email = document.getElementById('cloudEmail').value.trim();
+      const pass = document.getElementById('cloudPassword').value;
+      if (!email || pass.length < 6) {
+        cloudShowError('Vui lòng nhập email hợp lệ và mật khẩu tối thiểu 6 ký tự.');
+        return;
+      }
+      cloudAuth.createUserWithEmailAndPassword(email, pass)
+        .then(function() {
+          // Sau khi tạo tài khoản lần đầu, tự động đẩy toàn bộ dữ liệu đang có trên máy lên mây
+          setTimeout(cloudPushAllToCloud, 800);
+        })
+        .catch(function(err) { cloudShowError('Lỗi: ' + err.message); });
+    }
+
+    function cloudSignIn() {
+      document.getElementById('cloudLoginError').style.display = 'none';
+      if (!cloudAuth) {
+        cloudShowError('Chưa kết nối được máy chủ đồng bộ. Kiểm tra điện thoại/máy tính đang có mạng Internet rồi đóng app, mở lại và thử tiếp.');
+        document.getElementById('cloudRetryBox').style.display = 'block';
+        return;
+      }
+      const email = document.getElementById('cloudEmail').value.trim();
+      const pass = document.getElementById('cloudPassword').value;
+      if (!email || !pass) {
+        cloudShowError('Vui lòng nhập email và mật khẩu.');
+        return;
+      }
+      cloudAuth.signInWithEmailAndPassword(email, pass)
+        .catch(function(err) { cloudShowError('Lỗi: ' + err.message); });
+    }
+
+    function cloudSignOut() {
+      if (!cloudAuth) return;
+      cloudAuth.signOut();
+      closeModal('settingsModal');
+    }
+
+    // Lắng nghe thay đổi từ Firestore theo thời gian thực (nhiều thiết bị cùng cập nhật)
+    function startCloudSync() {
+      if (!cloudFirestore || !cloudUser) return;
+      stopCloudSync();
+      cloudFirstSyncDone = false;
+
+      const uid = cloudUser.uid;
+
+      cloudUnsubBrand = cloudFirestore.collection('users').doc(uid)
+        .onSnapshot(function(docSnap) {
+          if (docSnap.exists) {
+            const remoteBrand = docSnap.data();
+            const localUpdated = (db.brand && db.brand.updatedAt) || 0;
+            const remoteUpdated = remoteBrand.updatedAt || 0;
+            if (remoteUpdated >= localUpdated) {
+              db.brand = Object.assign({}, db.brand, remoteBrand);
+              saveDBLocalOnly();
+              renderHome();
+            }
+          }
+        }, function(err) { console.error('Lỗi đồng bộ cài đặt:', err); });
+
+      cloudUnsubCustomers = cloudFirestore.collection('users').doc(uid).collection('customers')
+        .onSnapshot(function(snapshot) {
+          if (!db.customers) db.customers = [];
+          let changed = false;
+
+          snapshot.docChanges().forEach(function(change) {
+            const remoteCust = change.doc.data();
+            const idx = db.customers.findIndex(c => c.id === remoteCust.id);
+
+            if (change.type === 'removed') {
+              if (idx !== -1) { db.customers.splice(idx, 1); changed = true; }
+              return;
+            }
+
+            const localUpdated = idx !== -1 ? (db.customers[idx].updatedAt || 0) : -1;
+            const remoteUpdated = remoteCust.updatedAt || 0;
+            if (remoteUpdated >= localUpdated) {
+              if (idx !== -1) db.customers[idx] = remoteCust;
+              else db.customers.push(remoteCust);
+              changed = true;
+            }
+          });
+
+          if (changed) {
+            saveDBLocalOnly();
+            renderHome();
+            renderCustomerList();
+            renderWarrantyList();
+          }
+          cloudFirstSyncDone = true;
+        }, function(err) { console.error('Lỗi đồng bộ khách hàng:', err); });
+
+      cloudUnsubAppointments = cloudFirestore.collection('users').doc(uid).collection('appointments')
+        .onSnapshot(function(snapshot) {
+          if (!db.appointments) db.appointments = [];
+          let changed = false;
+
+          snapshot.docChanges().forEach(function(change) {
+            const remoteAppt = change.doc.data();
+            const idx = db.appointments.findIndex(a => a.id === remoteAppt.id);
+
+            if (change.type === 'removed') {
+              if (idx !== -1) { db.appointments.splice(idx, 1); changed = true; }
+              return;
+            }
+
+            const localUpdated = idx !== -1 ? (db.appointments[idx].updatedAt || 0) : -1;
+            const remoteUpdated = remoteAppt.updatedAt || 0;
+            if (remoteUpdated >= localUpdated) {
+              if (idx !== -1) db.appointments[idx] = remoteAppt;
+              else db.appointments.push(remoteAppt);
+              changed = true;
+            }
+          });
+
+          if (changed) {
+            saveDBLocalOnly();
+            const apptTab = document.getElementById('appointmentList');
+            if (apptTab) renderAppointmentList();
+          }
+        }, function(err) { console.error('Lỗi đồng bộ lịch hẹn:', err); });
+    }
+
+    function stopCloudSync() {
+      if (cloudUnsubCustomers) { cloudUnsubCustomers(); cloudUnsubCustomers = null; }
+      if (cloudUnsubAppointments) { cloudUnsubAppointments(); cloudUnsubAppointments = null; }
+      if (cloudUnsubBrand) { cloudUnsubBrand(); cloudUnsubBrand = null; }
+    }
+
+    // Lưu local KHÔNG kích hoạt đẩy lại lên cloud (tránh vòng lặp khi vừa nhận dữ liệu từ cloud về)
+    async function saveDBLocalOnly() {
+      try {
+        await localforage.setItem('na_pmu_db', db);
+      } catch (e) {
+        console.error('Lỗi lưu cục bộ:', e);
+      }
+    }
+
+    // Giới hạn an toàn dưới ngưỡng 1MB thật của Firestore, để còn dư chỗ cho các trường khác
+    const FIRESTORE_DOC_SAFE_LIMIT = 900000;
+
+    function syncCustomerToCloud(customerId) {
+      if (!cloudFirestore || !cloudUser) return;
+      const customer = db.customers.find(c => c.id === customerId);
+      if (!customer) return;
+
+      customer.updatedAt = Date.now();
+      const size = JSON.stringify(customer).length;
+      if (size > FIRESTORE_DOC_SAFE_LIMIT) {
+        alert('Hồ sơ khách "' + customer.name + '" có quá nhiều ảnh/dữ liệu để đồng bộ lên mây (vẫn được lưu an toàn trên máy này). Hãy xoá bớt ảnh cũ ở các lượt làm lâu rồi nếu muốn đồng bộ đầy đủ.');
+        return;
+      }
+
+      cloudFirestore.collection('users').doc(cloudUser.uid).collection('customers').doc(customerId)
+        .set(customer)
+        .catch(function(err) {
+          console.error('Lỗi đồng bộ khách hàng lên mây:', err);
+          alert('Không thể đồng bộ hồ sơ khách hàng lên mây (đã lưu trên máy này). Kiểm tra kết nối mạng và thử lại sau.');
+        });
+    }
+
+    function cloudDeleteCustomer(customerId) {
+      if (!cloudFirestore || !cloudUser) return;
+      cloudFirestore.collection('users').doc(cloudUser.uid).collection('customers').doc(customerId)
+        .delete()
+        .catch(function(err) { console.error('Lỗi xoá khách hàng trên mây:', err); });
+    }
+
+    function syncAppointmentToCloud(apptId) {
+      if (!cloudFirestore || !cloudUser) return;
+      const appt = (db.appointments || []).find(a => a.id === apptId);
+      if (!appt) return;
+
+      appt.updatedAt = Date.now();
+      cloudFirestore.collection('users').doc(cloudUser.uid).collection('appointments').doc(apptId)
+        .set(appt)
+        .catch(function(err) { console.error('Lỗi đồng bộ lịch hẹn lên mây:', err); });
+    }
+
+    function cloudDeleteAppointment(apptId) {
+      if (!cloudFirestore || !cloudUser) return;
+      cloudFirestore.collection('users').doc(cloudUser.uid).collection('appointments').doc(apptId)
+        .delete()
+        .catch(function(err) { console.error('Lỗi xoá lịch hẹn trên mây:', err); });
+    }
+
+    function syncBrandToCloud() {
+      if (!cloudFirestore || !cloudUser) return;
+      db.brand.updatedAt = Date.now();
+      // Không đồng bộ mật mã doanh thu lên mây để tránh lộ qua kênh khác - mỗi thiết bị tự đặt mật mã riêng nếu cần
+      const brandToSync = Object.assign({}, db.brand);
+      cloudFirestore.collection('users').doc(cloudUser.uid)
+        .set(brandToSync, { merge: true })
+        .catch(function(err) { console.error('Lỗi đồng bộ cài đặt lên mây:', err); });
+    }
+
+    // Đẩy TOÀN BỘ dữ liệu hiện có trên máy lên mây (dùng khi mới bật đồng bộ lần đầu, hoặc sau khi phục hồi file sao lưu)
+    function cloudPushAllToCloud() {
+      if (!cloudFirestore || !cloudUser) {
+        alert('Vui lòng đăng nhập trước.');
+        return;
+      }
+      if (!confirm('Đẩy toàn bộ dữ liệu khách hàng trên máy này lên mây? Dữ liệu trên mây có cùng khách sẽ bị ghi đè bằng dữ liệu trên máy này.')) return;
+
+      syncBrandToCloud();
+      let count = 0;
+      (db.customers || []).forEach(c => {
+        syncCustomerToCloud(c.id);
+        count++;
+      });
+      (db.appointments || []).forEach(a => {
+        syncAppointmentToCloud(a.id);
+      });
+      alert('Đã bắt đầu đồng bộ ' + count + ' hồ sơ khách hàng lên mây.');
+    }
+
+    let db = {
+      brand: {
+        title: "Phun Xăm Thẩm Mỹ Ngọc Ánh",
+        slogan: "Phun xăm thẩm mỹ Ngọc Ánh xin chào quý khách",
+        logo: defaultBrandLogo,
+        passcode: "123456",
+        msgTemplate: defaultReminderTemplate
+      },
+      customers: [
+        {
+          id: "c1",
+          name: "Ngọc Ánh",
+          phone: "0988228480",
+          address: "Kinh 4",
+          sessions: [
+            {
+              id: "s1",
+              service: "Mày",
+              date: "2026-08-15T15:00",
+              preStatus: "Mày nhạt",
+              process: "Điêu khắc sợi",
+              colorMix: "Đỏ",
+              price: 2000000,
+              paid: 2000000,
+              warrantyMonths: 3,
+              warrantyDone: false,
+              warrantyDate: null,
+              imgBefore: "",
+              imgAfter: ""
+            }
+          ]
+        }
+      ],
+      appointments: []
+    };
+
+    async function saveDB() {
+      try {
+        await localforage.setItem('na_pmu_db', db);
+      } catch (e) {
+        alert("Lỗi khi lưu dữ liệu: " + e.message);
+      }
+    }
+
+    async function initDB() {
+      try {
+        let saved = await localforage.getItem('na_pmu_db');
+        if (!saved) {
+          const old = localStorage.getItem('na_pmu_db');
+          if (old) {
+            saved = JSON.parse(old);
+            await localforage.setItem('na_pmu_db', saved);
+          }
+        }
+        if (saved) {
+          db = saved;
+        }
+        if (!db.brand) db.brand = {};
+        if (!db.brand.logo || db.brand.logo.includes('...')) db.brand.logo = defaultBrandLogo;
+        if (!db.brand.msgTemplate) db.brand.msgTemplate = defaultReminderTemplate;
+        if (db.brand.lastExportDate === undefined) db.brand.lastExportDate = null;
+        if (!db.customers) db.customers = [];
+        if (!db.appointments) db.appointments = [];
+
+        renderHome();
+      } catch (err) {
+        console.error("Lỗi khởi tạo DB:", err);
+        renderHome();
+      }
+    }
+
+    function getTodayDateTimeString() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+
+    function formatDateTimeDisplay(dtStr) {
+      if (!dtStr) return '---';
+      const d = new Date(dtStr);
+      if (isNaN(d.getTime())) return dtStr;
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${hours}:${minutes} - ${day}/${month}/${year}`;
+    }
+
+    const serviceCategories = {
+      'moi': { name: 'Môi', title: 'Chọn loại dịch vụ Môi:', items: ['Phun môi', 'Khử thâm'] },
+      'may': { name: 'Mày', title: 'Chọn loại dịch vụ Mày:', items: ['Phun Ombre', 'Sợi đầu phun đuôi', 'Điêu khắc sợi'] },
+      'mi': { name: 'Mí mắt', title: 'Chọn loại dịch vụ Mí mắt:', items: ['Mí trên', 'Mí dưới'] },
+      'combo': { name: 'Combo', title: 'Chọn loại dịch vụ Combo:', items: ['Mày và môi', 'Mày và mí', 'Mí và môi'] },
+      'nhuhoa': { name: 'Nhũ hoa', title: 'Chọn dịch vụ Nhũ hoa:', items: ['Làm hồng nhũ'] },
+      'xoa': { name: 'Xóa', title: 'Chọn loại dịch vụ Xóa:', items: ['Xóa mày', 'Xóa hình xăm', 'Xóa môi', 'Xóa mí'] }
+    };
+
+    let currentGroupKey = 'moi';
+
+    function formatMoney(amount) {
+      return new Intl.NumberFormat('vi-VN').format(amount || 0) + ' đ';
+    }
+
+    // Chống XSS: escape ký tự đặc biệt trước khi chèn vào innerHTML.
+    // Áp dụng cho MỌI dữ liệu do người dùng nhập (tên, SĐT, địa chỉ, ghi chú...)
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Giống escapeHtml nhưng giữ lại xuống dòng dưới dạng <br> (dùng cho textarea nhiều dòng)
+    function escapeHtmlMultiline(str) {
+      return escapeHtml(str).replace(/\n/g, '<br>');
+    }
+
+    // Dùng khi chèn dữ liệu vào BÊN TRONG một chuỗi JS đặt trong thuộc tính onclick="...('...')"
+    // Trình duyệt giải mã HTML entity trước khi chạy JS, nên chỉ escapeHtml() là chưa đủ ở đây
+    // (dấu nháy đơn ' sẽ thoát ra ngoài chuỗi JS và cho phép chèn mã tuỳ ý).
+    // Thứ tự bắt buộc: escape cho ngữ cảnh JS string TRƯỚC, rồi mới escape cho thuộc tính HTML.
+    function escapeJsAttr(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function formatCurrencyInput(input) {
+      let value = input.value.replace(/\D/g, '');
+      input.value = value ? new Intl.NumberFormat('vi-VN').format(value) : '';
+    }
+
+    function handlePriceOrPaidChange() {
+      const priceInput = document.getElementById('custPrice');
+      const paidInput = document.getElementById('custPaid');
+      const debtInput = document.getElementById('custDebt');
+
+      formatCurrencyInput(priceInput);
+      formatCurrencyInput(paidInput);
+
+      const price = parseInt(priceInput.value.replace(/\D/g, '')) || 0;
+      const paid = parseInt(paidInput.value.replace(/\D/g, '')) || 0;
+      const debt = Math.max(0, price - paid);
+
+      debtInput.value = formatMoney(debt);
+    }
+
+    function setFullPayment() {
+      const priceInput = document.getElementById('custPrice');
+      const paidInput = document.getElementById('custPaid');
+      paidInput.value = priceInput.value;
+      handlePriceOrPaidChange();
+    }
+
+    function setZeroPayment() {
+      const paidInput = document.getElementById('custPaid');
+      paidInput.value = '0';
+      handlePriceOrPaidChange();
+    }
+
+    function calculateWarranty(dateStr, months) {
+      const m = parseInt(months);
+      if (isNaN(m) || m <= 0) {
+        return {
+          expiryDate: null,
+          expiryDateStr: 'Không bảo hành',
+          daysLeft: 0,
+          isOverdue: false,
+          overdueDays: 0,
+          isNoWarranty: true
+        };
+      }
+
+      let startDate = new Date(dateStr);
+      let expiryDate = new Date(startDate);
+      expiryDate.setMonth(expiryDate.getMonth() + m);
+      
+      let today = new Date();
+      let diffTime = expiryDate - today;
+      let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      const day = String(expiryDate.getDate()).padStart(2, '0');
+      const month = String(expiryDate.getMonth() + 1).padStart(2, '0');
+      const year = expiryDate.getFullYear();
+
+      return {
+        expiryDate: expiryDate,
+        expiryDateStr: `${day}/${month}/${year}`,
+        daysLeft: diffDays,
+        isOverdue: diffDays < 0,
+        overdueDays: Math.abs(diffDays),
+        isNoWarranty: false
+      };
+    }
+
+    // --- Nhắc lịch bảo hành tự động khi mở app ---
+    const AUTO_REMIND_DAYS_THRESHOLD = 15; // đồng bộ với ngưỡng "sắp hết hạn" đang dùng ở tab Bảo hành
+
+    function getAutoReminderCandidates() {
+      let candidates = [];
+      (db.customers || []).forEach(c => {
+        (c.sessions || []).forEach(s => {
+          if (s.warrantyDone) return;
+          if (s.autoReminderDismissed) return;
+          const w = calculateWarranty(s.date, s.warrantyMonths);
+          if (w.isNoWarranty) return;
+          if (w.isOverdue || w.daysLeft <= AUTO_REMIND_DAYS_THRESHOLD) {
+            candidates.push({
+              custId: c.id,
+              sessionId: s.id,
+              name: c.name,
+              phone: c.phone,
+              service: s.service,
+              isOverdue: w.isOverdue,
+              overdueDays: w.overdueDays,
+              daysLeft: w.daysLeft,
+              expiryDateStr: w.expiryDateStr
+            });
+          }
+        });
+      });
+      // Quá hạn hiển thị trước, rồi tới gần hạn nhất
+      candidates.sort((a, b) => {
+        if (a.isOverdue && !b.isOverdue) return -1;
+        if (!a.isOverdue && b.isOverdue) return 1;
+        return a.daysLeft - b.daysLeft;
+      });
+      return candidates;
+    }
+
+    // Lấy các lịch hẹn CÒN HIỆU LỰC (chưa hoàn tất/huỷ, chưa bấm "không nhắc") rơi vào HÔM NAY
+    function getTodayAppointmentCandidates() {
+      const now = new Date();
+      const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+
+      return (db.appointments || []).filter(a => {
+        if (a.status !== 'pending') return false;
+        if (a.dismissed) return false;
+        if (!a.dateTime) return false;
+        return a.dateTime.slice(0, 10) === todayStr;
+      }).sort((a, b) => a.dateTime.localeCompare(b.dateTime));
+    }
+
+    function showAutoWarrantyReminderPopup() {
+      const apptCandidates = getTodayAppointmentCandidates();
+      const warrantyCandidates = getAutoReminderCandidates();
+
+      if (apptCandidates.length === 0 && warrantyCandidates.length === 0) return;
+
+      const apptSection = document.getElementById('autoAppointmentReminderSection');
+      const warrantySection = document.getElementById('autoWarrantyReminderSection');
+
+      if (apptCandidates.length > 0) {
+        const apptHtml = apptCandidates.map(a => {
+          const dt = new Date(a.dateTime);
+          const timeStr = isNaN(dt.getTime()) ? '' : dt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+          return `
+            <div class="card" style="padding: 10px; margin-bottom: 8px; border-left: 3px solid var(--primary-gold);">
+              <div style="font-weight: 600; font-size: 13px;">${escapeHtml(a.name)} <span style="color: var(--text-muted); font-weight: normal; font-size: 11px;">- ${escapeHtml(a.phone)}</span></div>
+              <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Dịch vụ: ${escapeHtml(a.service) || '(chưa ghi rõ)'}</div>
+              <div style="font-size: 12px; margin-top: 4px; color: var(--primary-gold);"><i class="fa-regular fa-clock"></i> Hẹn lúc ${timeStr} hôm nay</div>
+              <div style="display: flex; gap: 6px; margin-top: 8px;">
+                <a class="btn-call" style="flex: 0 0 auto; padding: 5px 12px;" href="tel:${escapeHtml(a.phone)}" title="Gọi điện"><i class="fa-solid fa-phone"></i></a>
+                <button class="btn-remind" style="flex: 0 0 auto; padding: 5px 12px;" onclick="openAppointmentRemindModal('${a.id}')" title="Gửi tin nhắn nhắc"><i class="fa-solid fa-comment-dots"></i></button>
+              </div>
+              <label style="display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 11px; color: var(--text-muted); cursor: pointer;">
+                <input type="checkbox" class="auto-appt-dismiss-check" data-appt="${a.id}" style="width: 15px; height: 15px; accent-color: var(--primary-gold);">
+                Không nhắc lại lịch hẹn này nữa
+              </label>
+            </div>
+          `;
+        }).join('');
+        document.getElementById('autoAppointmentReminderList').innerHTML = apptHtml;
+        apptSection.style.display = 'block';
+      } else {
+        apptSection.style.display = 'none';
+      }
+
+      if (warrantyCandidates.length > 0) {
+        const itemsHtml = warrantyCandidates.map(item => `
+          <div class="card" style="padding: 10px; margin-bottom: 8px; border-left: 3px solid ${item.isOverdue ? 'var(--danger)' : 'var(--warning)'};">
+            <div style="font-weight: 600; font-size: 13px;">${escapeHtml(item.name)} <span style="color: var(--text-muted); font-weight: normal; font-size: 11px;">- ${escapeHtml(item.phone)}</span></div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Dịch vụ: ${escapeHtml(item.service)}</div>
+            <div style="font-size: 12px; margin-top: 4px; color: ${item.isOverdue ? 'var(--danger)' : 'var(--warning)'};">
+              ${item.isOverdue ? `<i class="fa-solid fa-triangle-exclamation"></i> Đã quá hạn bảo hành ${item.overdueDays} ngày` : `<i class="fa-regular fa-clock"></i> Còn ${item.daysLeft} ngày là hết hạn (${item.expiryDateStr})`}
+            </div>
+            <label style="display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 11px; color: var(--text-muted); cursor: pointer;">
+              <input type="checkbox" class="auto-remind-dismiss-check" data-cust="${item.custId}" data-session="${item.sessionId}" style="width: 15px; height: 15px; accent-color: var(--primary-gold);">
+              Không nhắc lại khách này nữa
+            </label>
+          </div>
+        `).join('');
+        document.getElementById('autoWarrantyReminderList').innerHTML = itemsHtml;
+        warrantySection.style.display = 'block';
+      } else {
+        warrantySection.style.display = 'none';
+      }
+
+      document.getElementById('autoWarrantyReminderModal').style.display = 'block';
+    }
+
+    async function closeAutoWarrantyReminderPopup() {
+      const checks = document.querySelectorAll('.auto-remind-dismiss-check:checked');
+      let changedCustIds = new Set();
+
+      checks.forEach(chk => {
+        const custId = chk.getAttribute('data-cust');
+        const sessionId = chk.getAttribute('data-session');
+        const customer = db.customers.find(c => c.id === custId);
+        if (customer && customer.sessions) {
+          const session = customer.sessions.find(s => s.id === sessionId);
+          if (session) {
+            session.autoReminderDismissed = true;
+            changedCustIds.add(custId);
+          }
+        }
+      });
+
+      const apptChecks = document.querySelectorAll('.auto-appt-dismiss-check:checked');
+      let changedApptIds = [];
+      apptChecks.forEach(chk => {
+        const apptId = chk.getAttribute('data-appt');
+        const appt = (db.appointments || []).find(a => a.id === apptId);
+        if (appt) {
+          appt.dismissed = true;
+          changedApptIds.push(apptId);
+        }
+      });
+
+      if (changedCustIds.size > 0 || changedApptIds.length > 0) {
+        await saveDB();
+        changedCustIds.forEach(id => syncCustomerToCloud(id));
+        changedApptIds.forEach(id => syncAppointmentToCloud(id));
+      }
+
+      closeModal('autoWarrantyReminderModal');
+    }
+
+    // --- Quản lý Lịch hẹn khách ---
+    function openAppointmentModal(id = null) {
+      document.getElementById('apptEditId').value = id || '';
+      if (id) {
+        const appt = (db.appointments || []).find(a => a.id === id);
+        if (!appt) return;
+        document.getElementById('appointmentModalTitle').innerHTML = '<i class="fa-solid fa-calendar-pen"></i> Sửa lịch hẹn';
+        document.getElementById('apptName').value = appt.name || '';
+        document.getElementById('apptPhone').value = appt.phone || '';
+        document.getElementById('apptService').value = appt.service || '';
+        document.getElementById('apptDateTime').value = appt.dateTime || '';
+        document.getElementById('apptNote').value = appt.note || '';
+      } else {
+        document.getElementById('appointmentModalTitle').innerHTML = '<i class="fa-solid fa-calendar-plus"></i> Thêm lịch hẹn';
+        document.getElementById('apptName').value = '';
+        document.getElementById('apptPhone').value = '';
+        document.getElementById('apptService').value = '';
+        document.getElementById('apptNote').value = '';
+        // Mặc định gợi ý hẹn vào cùng giờ, 1 ngày sau hôm nay
+        const suggested = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        document.getElementById('apptDateTime').value = suggested.toISOString().slice(0, 16);
+      }
+      document.getElementById('appointmentModal').style.display = 'block';
+    }
+
+    async function saveAppointmentData() {
+      const id = document.getElementById('apptEditId').value;
+      const name = document.getElementById('apptName').value.trim();
+      const phone = document.getElementById('apptPhone').value.trim();
+      const service = document.getElementById('apptService').value.trim();
+      const dateTime = document.getElementById('apptDateTime').value;
+      const note = document.getElementById('apptNote').value.trim();
+
+      if (!name || !phone) {
+        alert('Vui lòng nhập Tên và Số điện thoại khách hẹn!');
+        return;
+      }
+      if (!isValidPhone(phone)) {
+        alert('Số điện thoại không hợp lệ! Vui lòng nhập 9-11 chữ số.');
+        return;
+      }
+      if (!dateTime) {
+        alert('Vui lòng chọn ngày giờ hẹn!');
+        return;
+      }
+
+      if (!db.appointments) db.appointments = [];
+
+      let apptId = id;
+      if (id) {
+        const appt = db.appointments.find(a => a.id === id);
+        if (appt) {
+          appt.name = name;
+          appt.phone = phone;
+          appt.service = service;
+          appt.dateTime = dateTime;
+          appt.note = note;
+          appt.dismissed = false; // sửa lại lịch hẹn thì nhắc lại từ đầu
+        }
+      } else {
+        apptId = 'a_' + Date.now();
+        db.appointments.push({
+          id: apptId,
+          name, phone, service, dateTime, note,
+          status: 'pending',
+          dismissed: false,
+          createdAt: Date.now()
+        });
+      }
+
+      await saveDB();
+      syncAppointmentToCloud(apptId);
+      closeModal('appointmentModal');
+      renderAppointmentList();
+      alert('Đã lưu lịch hẹn thành công!');
+    }
+
+    async function markAppointmentStatus(id, status) {
+      const appt = (db.appointments || []).find(a => a.id === id);
+      if (!appt) return;
+      appt.status = status;
+      await saveDB();
+      syncAppointmentToCloud(id);
+      renderAppointmentList();
+
+      if (status === 'done') {
+        openAddCustomerModalFromAppointment(id);
+      }
+    }
+
+    // Mở sẵn form "Thêm khách hàng" với tên/SĐT lấy từ lịch hẹn - đỡ phải gõ lại khi khách đã tới
+    function openAddCustomerModalFromAppointment(apptId) {
+      const appt = (db.appointments || []).find(a => a.id === apptId);
+      if (!appt) return;
+
+      openAddCustomerModal();
+      document.getElementById('custName').value = appt.name || '';
+      document.getElementById('custPhone').value = appt.phone || '';
+      if (appt.service || appt.note) {
+        document.getElementById('custPreStatus').value = 'Hẹn làm: ' + (appt.service || '') + (appt.note ? ' — ' + appt.note : '');
+      }
+    }
+
+    async function deleteAppointment(id) {
+      if (!confirm('Bạn có chắc muốn xóa lịch hẹn này không?')) return;
+      db.appointments = (db.appointments || []).filter(a => a.id !== id);
+      await saveDB();
+      cloudDeleteAppointment(id);
+      renderAppointmentList();
+    }
+
+    function openAppointmentRemindModal(apptId) {
+      const appt = (db.appointments || []).find(a => a.id === apptId);
+      if (!appt) return;
+
+      const dt = new Date(appt.dateTime);
+      const timeStr = isNaN(dt.getTime()) ? '' : dt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+      const dateStr = isNaN(dt.getTime()) ? '' : dt.toLocaleDateString('vi-VN');
+
+      const msg = `Xin chào ${appt.name}, ${db.brand.title || 'Ngọc Ánh'} xin nhắc bạn có lịch hẹn ${appt.service || 'làm dịch vụ'} vào lúc ${timeStr} ngày ${dateStr}. Rất mong được đón tiếp bạn!`;
+
+      currentRemindPhone = appt.phone ? appt.phone.replace(/\D/g, '') : '';
+
+      document.getElementById('remindCustName').innerText = appt.name;
+      document.getElementById('remindCustPhone').innerText = appt.phone || 'Chưa có SĐT';
+      document.getElementById('remindMessageBody').value = msg;
+      document.getElementById('remindModal').style.display = 'block';
+    }
+
+    function renderAppointmentList() {
+      const q = (document.getElementById('appointmentSearchInput').value || '').toLowerCase().trim();
+      const container = document.getElementById('appointmentList');
+      if (!db.appointments) db.appointments = [];
+
+      let filtered = db.appointments.filter(a =>
+        (a.name && a.name.toLowerCase().includes(q)) ||
+        (a.phone && a.phone.includes(q)) ||
+        (a.service && a.service.toLowerCase().includes(q))
+      );
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 25px;">Chưa có lịch hẹn nào. Bấm "Thêm lịch hẹn" để bắt đầu.</div>`;
+        return;
+      }
+
+      // Sắp xếp: đang chờ (gần nhất trước) lên đầu, rồi tới đã hoàn tất/đã huỷ
+      filtered.sort((a, b) => {
+        if (a.status === 'pending' && b.status !== 'pending') return -1;
+        if (a.status !== 'pending' && b.status === 'pending') return 1;
+        return (a.dateTime || '').localeCompare(b.dateTime || '');
+      });
+
+      const now = new Date();
+      const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+
+      let html = '';
+      filtered.forEach(a => {
+        const dt = new Date(a.dateTime);
+        const validDate = !isNaN(dt.getTime());
+        const dateDisplay = validDate ? formatDateTimeDisplay(a.dateTime) : 'Chưa xác định';
+        const isToday = validDate && a.dateTime.slice(0, 10) === todayStr;
+        const isPast = validDate && dt < now && a.status === 'pending';
+
+        let statusBadge = '';
+        if (a.status === 'done') statusBadge = `<span class="badge badge-success"><i class="fa-solid fa-check"></i> Đã đến</span>`;
+        else if (a.status === 'cancelled') statusBadge = `<span class="badge badge-secondary"><i class="fa-solid fa-ban"></i> Đã huỷ</span>`;
+        else if (isPast) statusBadge = `<span class="badge badge-danger"><i class="fa-solid fa-triangle-exclamation"></i> Đã trễ hẹn</span>`;
+        else if (isToday) statusBadge = `<span class="badge badge-warning"><i class="fa-solid fa-bell"></i> Hôm nay</span>`;
+        else statusBadge = `<span class="badge badge-secondary"><i class="fa-regular fa-clock"></i> Sắp tới</span>`;
+
+        html += `
+          <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
+              <div style="font-weight: bold; font-size: 15px;">${escapeHtml(a.name)}</div>
+              ${statusBadge}
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">SĐT: ${escapeHtml(a.phone)}</div>
+            <div style="font-size: 12px; margin-bottom: 4px;">Dịch vụ: <strong style="color: var(--primary-gold);">${escapeHtml(a.service) || '(chưa ghi rõ)'}</strong></div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;"><i class="fa-regular fa-clock"></i> ${dateDisplay}</div>
+            ${a.note ? `<div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px; font-style: italic;">Ghi chú: ${escapeHtml(a.note)}</div>` : ''}
+
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;">
+              <a class="btn-call" style="flex: 0 0 auto; padding: 6px 12px;" href="tel:${escapeHtml(a.phone)}" title="Gọi điện"><i class="fa-solid fa-phone"></i></a>
+              <button class="btn-remind" style="flex: 0 0 auto; padding: 6px 12px;" onclick="openAppointmentRemindModal('${a.id}')" title="Gửi tin nhắn nhắc"><i class="fa-solid fa-comment-dots"></i></button>
+              ${a.status === 'pending' ? `
+                <button class="btn-outline" style="padding: 6px 10px; font-size: 11px; border-color: var(--success); color: var(--success);" title="Đánh dấu đã đến và mở sẵn form tạo hồ sơ khách hàng" onclick="markAppointmentStatus('${a.id}', 'done')"><i class="fa-solid fa-check"></i> Đã đến</button>
+                <button class="btn-outline" style="padding: 6px 10px; font-size: 11px;" onclick="markAppointmentStatus('${a.id}', 'cancelled')"><i class="fa-solid fa-ban"></i> Huỷ hẹn</button>
+              ` : `
+                <button class="btn-outline" style="padding: 6px 10px; font-size: 11px;" onclick="markAppointmentStatus('${a.id}', 'pending')"><i class="fa-solid fa-rotate-left"></i> Khôi phục</button>
+              `}
+              <button class="btn-outline" style="padding: 6px 10px; font-size: 11px;" onclick="openAppointmentModal('${a.id}')"><i class="fa-solid fa-pen"></i> Sửa</button>
+              <button class="btn-outline" style="padding: 6px 10px; font-size: 11px; border-color: var(--danger); color: var(--danger);" onclick="deleteAppointment('${a.id}')"><i class="fa-solid fa-trash"></i> Xóa</button>
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    }
+
+    let currentImgBefore = "";
+    let currentImgAfter = "";
+
+    function triggerPhotoSelect(type) {
+      if (type === 'before') {
+        document.getElementById('imgBeforeInput').click();
+      } else {
+        document.getElementById('imgAfterInput').click();
+      }
+    }
+
+    function handleImageUpload(event, imgId, textId, type) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = new Image();
+          img.src = e.target.result;
+          img.onload = function() {
+            const canvas = document.createElement('canvas');
+            const maxDimension = 600;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+              if (width > maxDimension) {
+                height = Math.round((height * maxDimension) / width);
+                width = maxDimension;
+              }
+            } else {
+              if (height > maxDimension) {
+                width = Math.round((width * maxDimension) / height);
+                height = maxDimension;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+
+            document.getElementById(imgId).src = compressedDataUrl;
+            document.getElementById(imgId).style.display = 'block';
+            document.getElementById(textId).style.display = 'none';
+
+            if (type === 'before') {
+              currentImgBefore = compressedDataUrl;
+              document.getElementById('btnDelBefore').style.display = 'flex';
+            } else {
+              currentImgAfter = compressedDataUrl;
+              document.getElementById('btnDelAfter').style.display = 'flex';
+            }
+          };
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function removePhoto(type) {
+      if (type === 'before') {
+        currentImgBefore = "";
+        document.getElementById('previewBefore').src = "";
+        document.getElementById('previewBefore').style.display = 'none';
+        document.getElementById('textBefore').style.display = 'flex';
+        document.getElementById('btnDelBefore').style.display = 'none';
+        document.getElementById('imgBeforeInput').value = "";
+      } else {
+        currentImgAfter = "";
+        document.getElementById('previewAfter').src = "";
+        document.getElementById('previewAfter').style.display = 'none';
+        document.getElementById('textAfter').style.display = 'flex';
+        document.getElementById('btnDelAfter').style.display = 'none';
+        document.getElementById('imgAfterInput').value = "";
+      }
+    }
+
+    function toggleServiceGroup(groupKey, preselectedSub = null) {
+      currentGroupKey = groupKey;
+      document.querySelectorAll('.service-parent-btn').forEach(btn => btn.classList.remove('active'));
+      const activeBtn = document.getElementById('btn-grp-' + groupKey);
+      if (activeBtn) activeBtn.classList.add('active');
+
+      const grp = serviceCategories[groupKey];
+      document.getElementById('subServiceTitle').innerText = grp.title;
+
+      const subGrid = document.getElementById('subServiceGrid');
+      let targetSub = preselectedSub || grp.items[0];
+
+      subGrid.innerHTML = grp.items.map(item => `
+        <div class="sub-chip ${item === targetSub ? 'selected' : ''}" onclick="selectSubService('${item}')">
+          ${item}
+        </div>
+      `).join('');
+
+      selectSubService(targetSub);
+    }
+
+    function selectSubService(subItemName) {
+      document.querySelectorAll('.sub-chip').forEach(c => {
+        if (c.innerText.trim() === subItemName) {
+          c.classList.add('selected');
+        } else {
+          c.classList.remove('selected');
+        }
+      });
+      document.getElementById('custService').value = subItemName;
+      document.getElementById('displaySelectedService').innerText = subItemName;
+    }
+
+    function selectWarranty(el, val) {
+      document.querySelectorAll('.warranty-options .chip').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+      document.getElementById('custWarrantyMonths').value = val;
+    }
+
+    function switchTab(tabId, el) {
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+      
+      document.getElementById('tab-' + tabId).classList.add('active');
+      el.classList.add('active');
+
+      if (tabId === 'home') renderHome();
+      if (tabId === 'customers') renderCustomerList();
+      if (tabId === 'appointments') renderAppointmentList();
+      if (tabId === 'warranty') renderWarrantyList();
+      if (tabId === 'revenue') renderRevenue();
+    }
+
+    // Số ngày cho phép trước khi nhắc sao lưu lại
+    const BACKUP_REMINDER_DAYS = 7;
+
+    function renderBackupReminder() {
+      const el = document.getElementById('backupReminderBanner');
+      if (!el) return;
+
+      // Không có khách hàng thì chưa cần nhắc sao lưu
+      if (!db.customers || db.customers.length === 0) {
+        el.style.display = 'none';
+        return;
+      }
+
+      const lastExport = db.brand && db.brand.lastExportDate ? new Date(db.brand.lastExportDate) : null;
+      let daysSince = Infinity;
+      if (lastExport && !isNaN(lastExport.getTime())) {
+        daysSince = Math.floor((new Date() - lastExport) / (1000 * 60 * 60 * 24));
+      }
+
+      if (daysSince >= BACKUP_REMINDER_DAYS) {
+        const msg = lastExport
+          ? `Đã ${daysSince} ngày chưa sao lưu dữ liệu. Nên tải file sao lưu để tránh mất dữ liệu nếu đổi máy hoặc xoá bộ nhớ trình duyệt.`
+          : `Bạn chưa từng sao lưu dữ liệu! Dữ liệu chỉ đang lưu trên thiết bị này — hãy tải file sao lưu ngay để phòng mất dữ liệu.`;
+        el.innerHTML = `
+          <div class="card" style="border: 1px solid var(--warning); background: rgba(243, 156, 18, 0.1); margin-bottom: 14px; display: flex; align-items: center; gap: 10px;">
+            <i class="fa-solid fa-triangle-exclamation" style="color: var(--warning); font-size: 20px;"></i>
+            <div style="flex: 1; font-size: 12.5px; color: var(--text-main); line-height: 1.5;">${msg}</div>
+            <button class="btn-outline" style="flex-shrink: 0; font-size: 12px;" onclick="openSettingsModal()"><i class="fa-solid fa-download"></i> Sao lưu ngay</button>
+          </div>
+        `;
+        el.style.display = 'block';
+      } else {
+        el.style.display = 'none';
+      }
+    }
+
+    function renderHome() {
+      document.getElementById('brandTitle').innerText = db.brand.title;
+      document.getElementById('brandSlogan').innerText = db.brand.slogan;
+      document.getElementById('brandLogo').src = db.brand.logo || defaultBrandLogo;
+
+      renderBackupReminder();
+
+      const recentContainer = document.getElementById('homeRecentList');
+      if (!db.customers || db.customers.length === 0) {
+        recentContainer.innerHTML = `<div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 20px;">Chưa có dữ liệu khách hàng.</div>`;
+        return;
+      }
+
+      let recent = [...db.customers].reverse().slice(0, 3);
+      let html = '';
+      recent.forEach(c => {
+        let lastSession = c.sessions[c.sessions.length - 1];
+        let paid = (lastSession.paid !== undefined) ? lastSession.paid : lastSession.price;
+        let debt = Math.max(0, (lastSession.price || 0) - paid);
+        let debtBadge = debt > 0 
+          ? `<span style="color: var(--danger); font-size: 11px; font-weight: bold; margin-left: 6px;">(Nợ: ${formatMoney(debt)})</span>` 
+          : '';
+
+        html += `
+          <div class="card customer-item" onclick="openCustomerDetail('${c.id}')">
+            <div>
+              <div style="font-weight: 700; font-size: 14px;">${escapeHtml(c.name)} <span style="font-size: 12px; color: var(--text-muted);">(${escapeHtml(c.phone)})</span></div>
+              <div style="font-size: 12px; color: var(--primary-gold); margin-top: 3px;">Dịch vụ: ${escapeHtml(lastSession.service)} - ${formatMoney(lastSession.price)} ${debtBadge}</div>
+            </div>
+            <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 12px;"></i>
+          </div>
+        `;
+      });
+      recentContainer.innerHTML = html;
+    }
+
+    // --- Chế độ chọn nhiều khách hàng (nhấn giữ để bật) ---
+    let customerSelectMode = false;
+    let selectedCustomerIds = new Set();
+    let custLongPressTimer = null;
+    let custLongPressFired = false;
+    let custPointerStartX = 0;
+    let custPointerStartY = 0;
+    const LONG_PRESS_MS = 500;
+    const LONG_PRESS_MOVE_CANCEL_PX = 12;
+
+    function custCardPointerDown(e, custId) {
+      custPointerStartX = e.clientX;
+      custPointerStartY = e.clientY;
+      custLongPressFired = false;
+      clearTimeout(custLongPressTimer);
+      custLongPressTimer = setTimeout(() => {
+        custLongPressFired = true;
+        if (navigator.vibrate) navigator.vibrate(30);
+        customerSelectMode = true;
+        toggleCustomerSelection(custId, true);
+      }, LONG_PRESS_MS);
+    }
+
+    function custCardPointerMove(e) {
+      if (Math.abs(e.clientX - custPointerStartX) > LONG_PRESS_MOVE_CANCEL_PX ||
+          Math.abs(e.clientY - custPointerStartY) > LONG_PRESS_MOVE_CANCEL_PX) {
+        clearTimeout(custLongPressTimer);
+      }
+    }
+
+    function custCardPointerUp(e) {
+      clearTimeout(custLongPressTimer);
+    }
+
+    // Chạm nhanh (click bình thường): nếu vừa xảy ra nhấn giữ thì bỏ qua (đã xử lý ở timer rồi)
+    function custCardClick(e, custId) {
+      if (custLongPressFired) {
+        custLongPressFired = false;
+        return;
+      }
+      if (customerSelectMode) {
+        toggleCustomerSelection(custId, false);
+      } else {
+        openCustomerDetail(custId);
+      }
+    }
+
+    function toggleCustomerSelection(custId, rerender) {
+      if (selectedCustomerIds.has(custId)) {
+        selectedCustomerIds.delete(custId);
+      } else {
+        selectedCustomerIds.add(custId);
+      }
+      renderCustomerList();
+    }
+
+    function exitCustomerSelectMode() {
+      customerSelectMode = false;
+      selectedCustomerIds.clear();
+      renderCustomerList();
+    }
+
+    async function deleteSelectedCustomers() {
+      const count = selectedCustomerIds.size;
+      if (count === 0) return;
+      if (!confirm(`CẢNH BÁO: Bạn có chắc chắn muốn xóa toàn bộ hồ sơ của ${count} khách hàng đã chọn không? Hành động này không thể hoàn tác.`)) return;
+
+      const idsToDelete = Array.from(selectedCustomerIds);
+      db.customers = db.customers.filter(c => !selectedCustomerIds.has(c.id));
+      await saveDB();
+      idsToDelete.forEach(id => cloudDeleteCustomer(id));
+
+      exitCustomerSelectMode();
+      renderHome();
+      renderWarrantyList();
+      alert(`Đã xóa ${count} khách hàng thành công.`);
+    }
+
+    function renderCustomerSelectBar() {
+      const bar = document.getElementById('customerSelectBar');
+      if (!bar) return;
+      if (!customerSelectMode) {
+        bar.style.display = 'none';
+        bar.innerHTML = '';
+        return;
+      }
+      const count = selectedCustomerIds.size;
+      bar.style.display = 'block';
+      bar.innerHTML = `
+        <div class="card" style="border: 1px solid var(--primary-gold); background: rgba(212,175,55,0.08); display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px;">
+          <div style="font-size: 13px; font-weight: 600;">Đã chọn: <span style="color: var(--primary-gold);">${count}</span> khách hàng</div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn-outline" style="padding: 7px 12px; font-size: 12px;" onclick="exitCustomerSelectMode()"><i class="fa-solid fa-xmark"></i> Hủy</button>
+            <button class="btn-outline" style="padding: 7px 12px; font-size: 12px; border-color: var(--danger); color: var(--danger);" ${count === 0 ? 'disabled' : ''} onclick="deleteSelectedCustomers()"><i class="fa-solid fa-trash"></i> Xóa đã chọn</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCustomerList() {
+      const q = (document.getElementById('customerSearchInput').value || '').toLowerCase().trim();
+      const container = document.getElementById('customerList');
+
+      renderCustomerSelectBar();
+
+      if (!db.customers) db.customers = [];
+
+      let filtered = db.customers.filter(c => 
+        (c.name && c.name.toLowerCase().includes(q)) || 
+        (c.phone && c.phone.includes(q)) || 
+        (c.address && c.address.toLowerCase().includes(q))
+      );
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 25px;">Không tìm thấy khách hàng phù hợp.</div>`;
+        return;
+      }
+
+      let html = '';
+      filtered.forEach(c => {
+        let serviceList = c.sessions ? c.sessions.map(s => s.service).join(', ') : '';
+        
+        let totalDebt = 0;
+        if (c.sessions) {
+          c.sessions.forEach(s => {
+            let p = s.price || 0;
+            let pd = (s.paid !== undefined) ? s.paid : p;
+            totalDebt += Math.max(0, p - pd);
+          });
+        }
+
+        let debtTag = totalDebt > 0 
+          ? `<span class="badge badge-danger" style="margin-top: 4px;"><i class="fa-solid fa-circle-exclamation"></i> Nợ: ${formatMoney(totalDebt)}</span>` 
+          : '';
+
+        const isSelected = selectedCustomerIds.has(c.id);
+        const selectCircle = customerSelectMode ? `
+          <div style="width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--primary-gold); flex-shrink: 0; margin-top: 2px; margin-right: 10px; display: flex; align-items: center; justify-content: center; background: ${isSelected ? 'var(--primary-gold)' : 'transparent'};">
+            ${isSelected ? '<i class="fa-solid fa-check" style="font-size: 11px; color: #000;"></i>' : ''}
+          </div>
+        ` : '';
+
+        html += `
+          <div class="card customer-item" style="${isSelected ? 'border: 1px solid var(--primary-gold); background: rgba(212,175,55,0.06);' : ''} user-select: none; -webkit-user-select: none;"
+               onpointerdown="custCardPointerDown(event, '${c.id}')"
+               onpointermove="custCardPointerMove(event)"
+               onpointerup="custCardPointerUp(event)"
+               onpointercancel="custCardPointerUp(event)"
+               onclick="custCardClick(event, '${c.id}')">
+            <div style="flex: 1; cursor: pointer; display: flex; align-items: flex-start;">
+              ${selectCircle}
+              <div style="flex: 1;">
+                <div style="font-weight: bold; font-size: 15px;">${escapeHtml(c.name)} ${debtTag}</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin: 3px 0;">SĐT: ${escapeHtml(c.phone)} | ĐC: ${escapeHtml(c.address) || 'Chưa lưu'}</div>
+                <div style="font-size: 12px; margin-top: 4px;">Đã làm: <strong style="color: var(--primary-gold);">${escapeHtml(serviceList)}</strong></div>
+              </div>
+            </div>
+            ${!customerSelectMode ? `
+            <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+              <div style="display: flex; gap: 6px;">
+                <button class="btn-outline" title="Chỉnh sửa toàn bộ hồ sơ khách hàng" onpointerdown="event.stopPropagation();" onclick="event.stopPropagation(); openEditFullCustomerModal('${c.id}')">
+                  <i class="fa-solid fa-pen"></i> Sửa
+                </button>
+                <button class="btn-outline" style="border-color: var(--danger); color: var(--danger);" title="Xóa khách hàng này" onpointerdown="event.stopPropagation();" onclick="event.stopPropagation(); deleteCustomer('${c.id}')">
+                  <i class="fa-solid fa-trash"></i> Xóa
+                </button>
+              </div>
+            </div>` : ''}
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    }
+
+    function renderWarrantyList() {
+      const q = (document.getElementById('warrantySearchInput') ? document.getElementById('warrantySearchInput').value : '').toLowerCase().trim();
+      const container = document.getElementById('warrantyList');
+      if (!db.customers || db.customers.length === 0) {
+        container.innerHTML = `<div style="color: var(--text-muted); text-align: center; padding: 25px;">Chưa có dữ liệu bảo hành.</div>`;
+        return;
+      }
+
+      let customerWarrantyGroups = [];
+
+      db.customers.forEach(c => {
+        if (c.sessions && c.sessions.length > 0) {
+          let sessionDetails = [];
+          let minActiveDaysLeft = Infinity;
+          let nearestExpiryDateStr = '';
+          let nearestServiceName = '';
+          let hasOverdue = false;
+          let allDone = true;
+          let allNoWarranty = true;
+
+          c.sessions.forEach(s => {
+            let w = calculateWarranty(s.date, s.warrantyMonths);
+            let isDone = !!s.warrantyDone;
+            
+            if (!w.isNoWarranty) {
+              allNoWarranty = false;
+              if (!isDone) {
+                allDone = false;
+                if (w.daysLeft < minActiveDaysLeft) {
+                  minActiveDaysLeft = w.daysLeft;
+                  nearestExpiryDateStr = w.expiryDateStr;
+                  nearestServiceName = s.service;
+                }
+                if (w.isOverdue) {
+                  hasOverdue = true;
+                }
+              }
+            }
+
+            sessionDetails.push({
+              sessionId: s.id,
+              service: s.service,
+              date: s.date,
+              expiryDate: w.expiryDateStr,
+              daysLeft: w.daysLeft,
+              isOverdue: w.isOverdue,
+              overdueDays: w.overdueDays,
+              colorMix: s.colorMix,
+              isNoWarranty: w.isNoWarranty,
+              warrantyDone: isDone,
+              warrantyDate: s.warrantyDate || null
+            });
+          });
+
+          let matchSearch = !q || 
+            (c.name && c.name.toLowerCase().includes(q)) || 
+            (c.phone && c.phone.includes(q)) || 
+            (c.address && c.address.toLowerCase().includes(q)) ||
+            (sessionDetails.some(s => s.service && s.service.toLowerCase().includes(q)));
+
+          if (matchSearch) {
+            customerWarrantyGroups.push({
+              customer: c,
+              sessions: sessionDetails,
+              minActiveDaysLeft: minActiveDaysLeft,
+              nearestExpiryDateStr: nearestExpiryDateStr,
+              nearestServiceName: nearestServiceName,
+              hasOverdue: hasOverdue,
+              allDone: allDone,
+              allNoWarranty: allNoWarranty
+            });
+          }
+        }
+      });
+
+      customerWarrantyGroups.sort((a, b) => a.minActiveDaysLeft - b.minActiveDaysLeft);
+
+      if (customerWarrantyGroups.length === 0) {
+        container.innerHTML = `<div style="color: var(--text-muted); text-align: center; padding: 25px;">Không tìm thấy thông tin bảo hành phù hợp.</div>`;
+        return;
+      }
+
+      let html = '';
+      customerWarrantyGroups.forEach(group => {
+        const c = group.customer;
+        let cardBorderColor = 'var(--primary-gold)';
+        if (group.hasOverdue) {
+          cardBorderColor = 'var(--danger)';
+        } else if (group.allDone && !group.allNoWarranty) {
+          cardBorderColor = 'var(--success)';
+        }
+
+        let outerSummaryBadge = '';
+        if (group.allNoWarranty) {
+          outerSummaryBadge = `<span class="badge badge-secondary" style="margin-top: 4px;"><i class="fa-solid fa-ban"></i> Không bảo hành</span>`;
+        } else if (group.allDone) {
+          outerSummaryBadge = `<span class="badge badge-success" style="margin-top: 4px;"><i class="fa-solid fa-check-double"></i> Đã hoàn tất bảo hành</span>`;
+        } else if (group.hasOverdue) {
+          outerSummaryBadge = `<span class="badge badge-danger" style="margin-top: 4px;"><i class="fa-solid fa-triangle-exclamation"></i> Có dịch vụ quá hạn</span>`;
+        } else if (group.nearestExpiryDateStr) {
+          let warnClass = group.minActiveDaysLeft <= 15 ? 'badge-warning' : 'badge-success';
+          outerSummaryBadge = `<span class="badge ${warnClass}" style="margin-top: 4px;"><i class="fa-regular fa-clock"></i> Hạn gần nhất (${group.nearestServiceName}): ${group.nearestExpiryDateStr} (còn ${group.minActiveDaysLeft} ngày)</span>`;
+        }
+
+        let subItemsHtml = '';
+        group.sessions.forEach(item => {
+          let badgeClass = 'badge-success';
+          let textStatus = '';
+          let doneDateFormatted = item.warrantyDate ? formatDateTimeDisplay(item.warrantyDate) : 'Đã làm';
+
+          if (item.isNoWarranty) {
+            badgeClass = 'badge-secondary';
+            textStatus = `Không bảo hành`;
+          } else if (item.warrantyDone) {
+            badgeClass = 'badge-success';
+            textStatus = `<i class="fa-solid fa-check"></i> Đã bảo hành`;
+          } else if (item.isOverdue) {
+            badgeClass = 'badge-danger';
+            textStatus = `<i class="fa-solid fa-triangle-exclamation"></i> Quá hạn ${item.overdueDays} ngày`;
+          } else if (item.daysLeft <= 15) {
+            badgeClass = 'badge-warning';
+            textStatus = `Sắp hết: Còn ${item.daysLeft} ngày`;
+          } else {
+            badgeClass = 'badge-success';
+            textStatus = `Còn ${item.daysLeft} ngày BH`;
+          }
+
+          let btnStatusHtml = '';
+          let btnRemindHtml = `
+            <div style="display: flex; flex: 1; gap: 6px;">
+              <a class="btn-call" href="tel:${escapeHtml(c.phone)}" onclick="event.stopPropagation();" title="Gọi điện cho khách hàng">
+                <i class="fa-solid fa-phone"></i>
+              </a>
+              <button class="btn-remind" onclick="event.stopPropagation(); openRemindModal('${c.id}', '${item.sessionId}')" title="Gửi tin nhắn nhắc bảo hành">
+                <i class="fa-solid fa-comment-dots"></i>
+              </button>
+            </div>
+          `;
+
+          if (!item.isNoWarranty) {
+            btnStatusHtml = item.warrantyDone
+              ? `<button class="btn-warranty-status done" title="Bấm để chuyển về Chưa dặm/bảo hành" onclick="event.stopPropagation(); toggleWarrantyStatus('${c.id}', '${item.sessionId}')"><i class="fa-solid fa-check"></i> Đã bảo hành (${doneDateFormatted})</button>`
+              : `<button class="btn-warranty-status" title="Bấm để xác nhận Khách đã đến bảo hành" onclick="event.stopPropagation(); toggleWarrantyStatus('${c.id}', '${item.sessionId}')"><i class="fa-regular fa-circle"></i> Xác nhận bảo hành</button>`;
+          }
+
+          subItemsHtml += `
+            <div class="warranty-sub-item ${item.warrantyDone ? 'completed' : (item.isOverdue ? 'overdue' : '')}">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <div>
+                  <strong style="color: #fff; font-size: 14px;">Dịch vụ: ${escapeHtml(item.service)}</strong>
+                </div>
+                <div>
+                  <span class="badge ${badgeClass}">${textStatus}</span>
+                </div>
+              </div>
+
+              <div style="font-size: 12px; color: var(--text-muted); line-height: 1.6;">
+                <div>Màu pha: <strong style="color: #fff;">${escapeHtml(item.colorMix) || 'Mặc định'}</strong></div>
+                <div>Vào làm: <strong style="color: #fff;">${formatDateTimeDisplay(item.date)}</strong> &bull; Hạn chót: <strong style="color: var(--primary-gold);">${item.expiryDate}</strong></div>
+              </div>
+
+              <div class="warranty-actions-row">
+                ${btnRemindHtml}
+                ${btnStatusHtml}
+              </div>
+            </div>
+          `;
+        });
+
+        html += `
+          <div class="card" style="border-left: 4px solid ${cardBorderColor}; margin-bottom: 12px; padding: 14px;">
+            <div style="cursor: pointer;" onclick="toggleWarrantyAccordion('${c.id}')">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-size: 15px; font-weight: 700; color: var(--primary-gold); line-height: 1.3;">
+                    ${escapeHtml(c.name)} <span style="color: var(--text-muted); font-size: 13px; font-weight: normal;">- ${escapeHtml(c.phone)}</span>
+                  </div>
+                  <div style="font-size: 12px; color: var(--text-muted); margin-top: 3px;">ĐC: ${escapeHtml(c.address) || 'Chưa lưu'}</div>
+                </div>
+                
+                <div class="warranty-accordion-btn" style="flex-shrink: 0; padding: 5px 8px;" title="Bấm để xem/ẩn các dịch vụ">
+                  <span style="font-weight: 600;">${group.sessions.length} DV</span>
+                  <i class="fa-solid fa-chevron-down warranty-chevron" id="chevron-${c.id}"></i>
+                </div>
+              </div>
+
+              <div style="margin-top: 8px;">
+                ${outerSummaryBadge}
+              </div>
+            </div>
+            
+            <div class="warranty-details-collapse" id="collapse-${c.id}">
+              ${subItemsHtml}
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function toggleWarrantyAccordion(custId) {
+      const collapseEl = document.getElementById(`collapse-${custId}`);
+      const chevronEl = document.getElementById(`chevron-${custId}`);
+      if (collapseEl && chevronEl) {
+        const isHidden = (collapseEl.style.display === 'none' || collapseEl.style.display === '');
+        collapseEl.style.display = isHidden ? 'block' : 'none';
+        if (isHidden) {
+          chevronEl.classList.add('open');
+        } else {
+          chevronEl.classList.remove('open');
+        }
+      }
+    }
+
+    function toggleWarrantyStatus(custId, sessionId) {
+      if (!db.customers) return;
+      const customer = db.customers.find(c => c.id === custId);
+      if (customer && customer.sessions) {
+        const session = customer.sessions.find(s => s.id === sessionId);
+        if (session) {
+          session.warrantyDone = !session.warrantyDone;
+          session.warrantyDate = session.warrantyDone ? getTodayDateTimeString() : null;
+          saveDB();
+          syncCustomerToCloud(custId);
+          renderWarrantyList();
+          setTimeout(() => {
+            const collapseEl = document.getElementById(`collapse-${custId}`);
+            const chevronEl = document.getElementById(`chevron-${custId}`);
+            if (collapseEl && chevronEl) {
+              collapseEl.style.display = 'block';
+              chevronEl.classList.add('open');
+            }
+          }, 10);
+        }
+      }
+    }
+
+    function robustCopyToClipboard(text) {
+      return new Promise((resolve, reject) => {
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(text).then(resolve).catch(() => {
+            fallbackCopy(text) ? resolve() : reject();
+          });
+        } else {
+          fallbackCopy(text) ? resolve() : reject();
+        }
+      });
+
+      function fallbackCopy(text) {
+        try {
+          const textArea = document.createElement("textarea");
+          textArea.value = text;
+          textArea.style.position = "fixed";
+          textArea.style.left = "-999999px";
+          textArea.style.top = "-999999px";
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          const success = document.execCommand('copy');
+          document.body.removeChild(textArea);
+          return success;
+        } catch (err) {
+          return false;
+        }
+      }
+    }
+
+    let currentRemindPhone = "";
+    function openRemindModal(custId, sessionId) {
+      const customer = db.customers.find(c => c.id === custId);
+      if (!customer) return;
+      const session = customer.sessions.find(s => s.id === sessionId);
+      if (!session) return;
+
+      const w = calculateWarranty(session.date, session.warrantyMonths);
+      const template = (db.brand && db.brand.msgTemplate) ? db.brand.msgTemplate : defaultReminderTemplate;
+
+      let msg = template
+        .replace(/{TEN_KH}/g, customer.name)
+        .replace(/{DICH_VU}/g, session.service)
+        .replace(/{HAN_BH}/g, w.expiryDateStr)
+        .replace(/{TEN_TIEM}/g, db.brand.title || "Ngọc Ánh");
+
+      currentRemindPhone = customer.phone ? customer.phone.replace(/\D/g, '') : '';
+
+      document.getElementById('remindCustName').innerText = customer.name;
+      document.getElementById('remindCustPhone').innerText = customer.phone || 'Chưa có SĐT';
+      document.getElementById('remindMessageBody').value = msg;
+      document.getElementById('remindModal').style.display = 'block';
+    }
+
+    function sendViaZalo() {
+      const text = document.getElementById('remindMessageBody').value;
+      if (!currentRemindPhone) {
+        alert('Khách hàng chưa có số điện thoại!');
+        return;
+      }
+
+      robustCopyToClipboard(text).then(() => {
+        window.open(`https://zalo.me/${currentRemindPhone}`, '_blank');
+      }).catch(() => {
+        window.open(`https://zalo.me/${currentRemindPhone}`, '_blank');
+      });
+    }
+
+    function sendViaSMS() {
+      const text = encodeURIComponent(document.getElementById('remindMessageBody').value);
+      if (currentRemindPhone) {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const delimiter = isIOS ? '&' : '?';
+        window.location.href = `sms:${currentRemindPhone}${delimiter}body=${text}`;
+      } else {
+        alert('Khách hàng chưa có số điện thoại!');
+      }
+    }
+
+    function copyReminderText() {
+      const text = document.getElementById('remindMessageBody').value;
+      robustCopyToClipboard(text).catch(() => {
+        const ta = document.getElementById('remindMessageBody');
+        ta.select();
+        document.execCommand('copy');
+      });
+    }
+
+    function openEditFullCustomerModal(custId, sessionId = null) {
+      closeModal('customerDetailModal');
+
+      const customer = db.customers.find(c => c.id === custId);
+      if (!customer) return;
+
+      let session = null;
+      if (sessionId && customer.sessions) {
+        session = customer.sessions.find(s => s.id === sessionId);
+      }
+      if (!session && customer.sessions && customer.sessions.length > 0) {
+        session = customer.sessions[customer.sessions.length - 1];
+      }
+
+      document.getElementById('modalTitle').innerText = "Chỉnh sửa hồ sơ & Dịch vụ";
+      document.getElementById('custEditId').value = customer.id;
+      document.getElementById('custSessionEditId').value = session ? session.id : '';
+      document.getElementById('isAddingSessionOnly').value = 'false';
+
+      document.getElementById('personalInfoFields').style.display = 'block';
+      document.getElementById('custName').value = customer.name || '';
+      document.getElementById('custPhone').value = customer.phone || '';
+      document.getElementById('custAddress').value = customer.address || '';
+
+      if (session) {
+        document.getElementById('custPreStatus').value = session.preStatus || '';
+        document.getElementById('custProcess').value = session.process || '';
+        document.getElementById('custColorMix').value = session.colorMix || '';
+        document.getElementById('custPrice').value = session.price ? new Intl.NumberFormat('vi-VN').format(session.price) : '';
+        
+        let paidVal = (session.paid !== undefined) ? session.paid : session.price;
+        document.getElementById('custPaid').value = paidVal ? new Intl.NumberFormat('vi-VN').format(paidVal) : '0';
+        handlePriceOrPaidChange();
+
+        let dateVal = session.date || getTodayDateTimeString();
+        if (dateVal.length === 10) dateVal += "T15:00";
+        document.getElementById('custDate').value = dateVal;
+
+        let groupFound = 'moi';
+        for (let g in serviceCategories) {
+          if (serviceCategories[g].items.includes(session.service)) {
+            groupFound = g;
+            break;
+          }
+        }
+        toggleServiceGroup(groupFound, session.service);
+        document.getElementById('custService').value = session.service;
+        document.getElementById('displaySelectedService').innerText = session.service;
+
+        const months = (session.warrantyMonths !== undefined) ? parseInt(session.warrantyMonths) : 1;
+        document.getElementById('custWarrantyMonths').value = months;
+        document.querySelectorAll('.warranty-options .chip').forEach(c => {
+          if (c.innerText.trim() === (months === 0 ? 'Không BH' : months + 'T')) {
+            c.classList.add('selected');
+          } else {
+            c.classList.remove('selected');
+          }
+        });
+
+        currentImgBefore = session.imgBefore || "";
+        currentImgAfter = session.imgAfter || "";
+
+        if (currentImgBefore) {
+          document.getElementById('previewBefore').src = currentImgBefore;
+          document.getElementById('previewBefore').style.display = 'block';
+          document.getElementById('textBefore').style.display = 'none';
+          document.getElementById('btnDelBefore').style.display = 'flex';
+        } else {
+          document.getElementById('previewBefore').style.display = 'none';
+          document.getElementById('textBefore').style.display = 'flex';
+          document.getElementById('btnDelBefore').style.display = 'none';
+        }
+
+        if (currentImgAfter) {
+          document.getElementById('previewAfter').src = currentImgAfter;
+          document.getElementById('previewAfter').style.display = 'block';
+          document.getElementById('textAfter').style.display = 'none';
+          document.getElementById('btnDelAfter').style.display = 'flex';
+        } else {
+          document.getElementById('previewAfter').style.display = 'none';
+          document.getElementById('textAfter').style.display = 'flex';
+          document.getElementById('btnDelAfter').style.display = 'none';
+        }
+      }
+
+      document.getElementById('customerModal').style.display = 'block';
+    }
+
+    function openAddCustomerModal(existingCustomerId = null) {
+      document.getElementById('custEditId').value = existingCustomerId || '';
+      document.getElementById('custSessionEditId').value = '';
+      document.getElementById('isAddingSessionOnly').value = existingCustomerId ? 'true' : 'false';
+      
+      removePhoto('before');
+      removePhoto('after');
+
+      if (existingCustomerId) {
+        let cust = db.customers.find(c => c.id === existingCustomerId);
+        document.getElementById('modalTitle').innerText = `Thêm lượt xăm cho: ${cust.name}`;
+        document.getElementById('personalInfoFields').style.display = 'none';
+      } else {
+        document.getElementById('modalTitle').innerText = "Thêm khách hàng mới";
+        document.getElementById('personalInfoFields').style.display = 'block';
+        document.getElementById('custName').value = '';
+        document.getElementById('custPhone').value = '';
+        document.getElementById('custAddress').value = '';
+      }
+
+      document.getElementById('custPreStatus').value = '';
+      document.getElementById('custProcess').value = '';
+      document.getElementById('custColorMix').value = '';
+      document.getElementById('custPrice').value = '';
+      document.getElementById('custPaid').value = '';
+      document.getElementById('custDebt').value = '0 đ';
+      document.getElementById('custDate').value = getTodayDateTimeString();
+
+      toggleServiceGroup('moi');
+      
+      const chips = document.querySelectorAll('.warranty-options .chip');
+      chips.forEach(c => c.classList.remove('selected'));
+      if (chips[1]) chips[1].classList.add('selected');
+      document.getElementById('custWarrantyMonths').value = 1;
+
+      document.getElementById('customerModal').style.display = 'block';
+    }
+
+    // Chấp nhận số điện thoại VN cơ bản: 9-11 chữ số, có thể có dấu cách/gạch ngang
+    function isValidPhone(phone) {
+      const digitsOnly = phone.replace(/[\s.-]/g, '');
+      return /^0?\d{9,11}$/.test(digitsOnly);
+    }
+
+    async function saveCustomerData(openQRAfter = false) {
+      const isSessionOnly = document.getElementById('isAddingSessionOnly').value === 'true';
+      const custId = document.getElementById('custEditId').value;
+      const sessionEditId = document.getElementById('custSessionEditId').value;
+      
+      const service = document.getElementById('custService').value;
+      const preStatus = document.getElementById('custPreStatus').value.trim();
+      const process = document.getElementById('custProcess').value.trim();
+      const colorMix = document.getElementById('custColorMix').value.trim();
+      const date = document.getElementById('custDate').value || getTodayDateTimeString();
+      const warrantyMonths = parseInt(document.getElementById('custWarrantyMonths').value);
+      
+      let priceRaw = document.getElementById('custPrice').value.replace(/\D/g, '');
+      const price = priceRaw ? parseInt(priceRaw) : 0;
+
+      let paidRaw = document.getElementById('custPaid').value.replace(/\D/g, '');
+      // Để trống ô "Đã trả" = MẶC ĐỊNH CHƯA TRẢ GÌ (nợ toàn bộ), vì thực tế khách thường
+      // trả tiền SAU khi làm xong, không phải lúc mới nhập thông tin ban đầu.
+      const paid = paidRaw !== "" ? parseInt(paidRaw) : 0;
+
+      if (paid > price) {
+        if (!confirm(`Số tiền đã trả (${formatMoney(paid)}) đang lớn hơn tổng giá tiền (${formatMoney(price)}). Bạn có chắc muốn lưu như vậy không?`)) {
+          return;
+        }
+      }
+
+      let existingDone = false;
+      let existingWarrantyDate = null;
+      if (custId && sessionEditId) {
+        let cust = db.customers.find(c => c.id === custId);
+        if (cust && cust.sessions) {
+          let s = cust.sessions.find(x => x.id === sessionEditId);
+          if (s) {
+            existingDone = !!s.warrantyDone;
+            existingWarrantyDate = s.warrantyDate || null;
+          }
+        }
+      }
+
+      const sessionData = {
+        id: sessionEditId || ('s_' + Date.now()),
+        service,
+        preStatus,
+        process,
+        colorMix,
+        date,
+        price,
+        paid: isNaN(paid) ? price : paid,
+        warrantyMonths: isNaN(warrantyMonths) ? 1 : warrantyMonths,
+        warrantyDone: existingDone,
+        warrantyDate: existingWarrantyDate,
+        imgBefore: currentImgBefore,
+        imgAfter: currentImgAfter
+      };
+
+      let savedCustomerId = null;
+
+      if (custId) {
+        let customer = db.customers.find(c => c.id === custId);
+        if (customer) {
+          if (!isSessionOnly) {
+            const name = document.getElementById('custName').value.trim();
+            const phone = document.getElementById('custPhone').value.trim();
+            const address = document.getElementById('custAddress').value.trim();
+
+            if (!name || !phone) {
+              alert('Vui lòng nhập Tên và Số điện thoại!');
+              return;
+            }
+            if (!isValidPhone(phone)) {
+              alert('Số điện thoại không hợp lệ! Vui lòng nhập 9-11 chữ số (VD: 0908123456).');
+              return;
+            }
+            customer.name = name;
+            customer.phone = phone;
+            customer.address = address;
+          }
+
+          if (!customer.sessions) customer.sessions = [];
+
+          if (sessionEditId) {
+            const sIndex = customer.sessions.findIndex(s => s.id === sessionEditId);
+            if (sIndex !== -1) {
+              customer.sessions[sIndex] = sessionData;
+            } else {
+              customer.sessions.push(sessionData);
+            }
+          } else {
+            customer.sessions.push(sessionData);
+          }
+          savedCustomerId = customer.id;
+        }
+      } else {
+        const name = document.getElementById('custName').value.trim();
+        const phone = document.getElementById('custPhone').value.trim();
+        const address = document.getElementById('custAddress').value.trim();
+
+        if (!name || !phone) {
+          alert('Vui lòng nhập Tên và Số điện thoại!');
+          return;
+        }
+        if (!isValidPhone(phone)) {
+          alert('Số điện thoại không hợp lệ! Vui lòng nhập 9-11 chữ số (VD: 0908123456).');
+          return;
+        }
+
+        if (!db.customers) db.customers = [];
+
+        const newCustomer = {
+          id: 'c_' + Date.now(),
+          name,
+          phone,
+          address,
+          sessions: [sessionData]
+        };
+        db.customers.push(newCustomer);
+        savedCustomerId = newCustomer.id;
+      }
+
+      await saveDB();
+      if (savedCustomerId) syncCustomerToCloud(savedCustomerId);
+      closeModal('customerModal');
+      renderHome();
+      renderCustomerList();
+      renderWarrantyList();
+      if (custId) openCustomerDetail(custId);
+
+      if (openQRAfter && savedCustomerId) {
+        const debt = Math.max(0, sessionData.price - sessionData.paid);
+        if (debt > 0) {
+          const custNameForNote = document.getElementById('custName').value.trim() ||
+            ((db.customers.find(c => c.id === savedCustomerId) || {}).name) || '';
+          openPaymentQR(savedCustomerId, sessionData.id, debt, 'Thanh toan ' + sessionData.service + ' ' + custNameForNote);
+        } else {
+          alert('Lượt này không còn nợ, không cần tạo mã thanh toán.');
+        }
+      } else {
+        alert('Đã cập nhật hồ sơ khách hàng thành công!');
+      }
+    }
+
+    function openCustomerDetail(custId) {
+      const customer = db.customers.find(c => c.id === custId);
+      if (!customer) return;
+
+      let totalCustPrice = 0;
+      let totalCustPaid = 0;
+      if (customer.sessions) {
+        customer.sessions.forEach(s => {
+          let p = s.price || 0;
+          let pd = (s.paid !== undefined) ? s.paid : p;
+          totalCustPrice += p;
+          totalCustPaid += pd;
+        });
+      }
+      let totalCustDebt = Math.max(0, totalCustPrice - totalCustPaid);
+
+      let html = `
+        <div style="background: var(--bg-input); padding: 14px; border-radius: 10px; margin-bottom: 16px; border: 1px solid var(--border-color);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h2 style="color: var(--primary-gold); font-size: 18px;">${escapeHtml(customer.name)}</h2>
+            <div style="display: flex; gap: 6px;">
+              <button class="btn-outline" onclick="openEditFullCustomerModal('${customer.id}')" title="Sửa toàn bộ thông tin & ảnh đối chiếu">
+                <i class="fa-solid fa-pen"></i> Sửa
+              </button>
+              <button class="btn-danger-outline" onclick="deleteCustomer('${customer.id}')">
+                <i class="fa-solid fa-trash-can"></i> Xóa
+              </button>
+            </div>
+          </div>
+          <div style="font-size: 13px; color: var(--text-muted); line-height: 1.6;">
+            <div><i class="fa-solid fa-phone"></i> <strong>${escapeHtml(customer.phone)}</strong></div>
+            <div><i class="fa-solid fa-location-dot"></i> ${escapeHtml(customer.address) || 'Chưa lưu địa chỉ'}</div>
+            <div style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+              <span>Tổng làm: <strong style="color:#fff;">${formatMoney(totalCustPrice)}</strong></span>
+              <span>Tổng nợ: <strong style="color:${totalCustDebt > 0 ? 'var(--danger)' : 'var(--success)'};">${formatMoney(totalCustDebt)}</strong></span>
+            </div>
+            ${totalCustDebt > 0 ? `
+              <button class="btn-gold" style="width: 100%; margin-top: 10px; padding: 9px; font-size: 13px;" onclick="openPaymentQR('${customer.id}', null, ${totalCustDebt}, 'Thanh toan ${escapeJsAttr(customer.name)}')">
+                <i class="fa-solid fa-qrcode"></i> Thanh toán toàn bộ (${formatMoney(totalCustDebt)})
+              </button>
+            ` : `
+              <button class="btn-gold" style="width: 100%; margin-top: 10px; padding: 9px; font-size: 13px; opacity: 0.5; cursor: not-allowed; background: var(--bg-input); color: var(--success); border: 1px solid var(--success);" disabled>
+                <i class="fa-solid fa-circle-check"></i> Đã thanh toán đủ
+              </button>
+            `}
+          </div>
+        </div>
+
+        <button class="btn-gold" style="width: 100%; margin-bottom: 20px; font-size: 14px;" onclick="closeModal('customerDetailModal'); openAddCustomerModal('${customer.id}')">
+          <i class="fa-solid fa-plus-circle"></i> Thêm lượt xăm mới cho khách này
+        </button>
+
+        <h4 style="font-size: 14px; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; color: var(--text-main);">
+          <i class="fa-solid fa-clock-rotate-left"></i> Lịch sử các lần phun xăm (${customer.sessions ? customer.sessions.length : 0} lần)
+        </h4>
+      `;
+
+      if (customer.sessions) {
+        customer.sessions.forEach((s, idx) => {
+          let w = calculateWarranty(s.date, s.warrantyMonths);
+          let badge = '';
+          if (w.isNoWarranty) {
+            badge = `<span class="badge badge-secondary">Không BH</span>`;
+          } else if (s.warrantyDone) {
+            let doneDate = s.warrantyDate ? formatDateTimeDisplay(s.warrantyDate) : 'Đã làm';
+            badge = `<span class="badge badge-success"><i class="fa-solid fa-check"></i> Đã BH (${doneDate})</span>`;
+          } else if (w.isOverdue) {
+            badge = `<span class="badge badge-danger"><i class="fa-solid fa-triangle-exclamation"></i> Quá hạn ${w.overdueDays} ngày</span>`;
+          } else if (w.daysLeft <= 15) {
+            badge = `<span class="badge badge-warning">Còn ${w.daysLeft} ngày BH</span>`;
+          } else {
+            badge = `<span class="badge badge-success">Còn ${w.daysLeft} ngày BH</span>`;
+          }
+
+          let imagesHtml = '';
+          if (s.imgBefore || s.imgAfter) {
+            imagesHtml = `<div class="detail-images">`;
+            if (s.imgBefore) {
+              imagesHtml += `
+                <div class="detail-img-box">
+                  <img src="${s.imgBefore}" onclick="openImageViewer(this.src, 'Ảnh trước khi làm - ${escapeJsAttr(customer.name)}')" title="Bấm để xem ảnh lớn">
+                  <span>Ảnh trước khi làm</span>
+                </div>
+              `;
+            }
+            if (s.imgAfter) {
+              imagesHtml += `
+                <div class="detail-img-box">
+                  <img src="${s.imgAfter}" onclick="openImageViewer(this.src, 'Ảnh sau khi làm - ${escapeJsAttr(customer.name)}')" title="Bấm để xem ảnh lớn">
+                  <span>Ảnh sau khi làm</span>
+                </div>
+              `;
+            }
+            imagesHtml += `</div>`;
+          }
+
+          const displayPreStatus = s.preStatus ? escapeHtmlMultiline(s.preStatus) : '---';
+          const displayProcess = s.process ? escapeHtmlMultiline(s.process) : '---';
+          const displayColorMix = s.colorMix ? escapeHtmlMultiline(s.colorMix) : '---';
+
+          let paidVal = (s.paid !== undefined) ? s.paid : s.price;
+          let debtVal = Math.max(0, (s.price || 0) - paidVal);
+          let paymentBadge = debtVal === 0 
+            ? `<span class="badge badge-success"><i class="fa-solid fa-check"></i> Đã trả đủ</span>`
+            : (paidVal === 0 
+                ? `<span class="badge badge-danger"><i class="fa-solid fa-circle-xmark"></i> Chưa thanh toán</span>` 
+                : `<span class="badge badge-danger"><i class="fa-solid fa-circle-exclamation"></i> Nợ: ${formatMoney(debtVal)}</span>`);
+
+          html += `
+            <div class="card" style="background: var(--bg-input); margin-bottom: 14px; font-size: 13px; line-height: 1.6; border-left: 4px solid ${s.warrantyDone ? 'var(--success)' : (w.isOverdue ? 'var(--danger)' : 'var(--primary-gold)')}; padding: 14px;">
+              
+              <!-- Hàng tiêu đề dịch vụ và giá -->
+              <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+                <span style="font-weight: 700; color: var(--primary-gold); font-size: 15px;">Lần ${idx + 1}: ${escapeHtml(s.service)}</span>
+                <span style="font-weight: 700; color: var(--primary-gold); font-size: 15px;">${formatMoney(s.price)}</span>
+              </div>
+
+              <!-- Hàng trạng thái (Badges) + Nút sửa được sắp xếp gọn gàng -->
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 6px;">
+                <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+                  ${paymentBadge}
+                  ${badge}
+                </div>
+                <div style="display: flex; gap: 6px;">
+                  ${debtVal > 0 ? `
+                    <button class="btn-outline" style="padding: 4px 10px; font-size: 11px; border-color: var(--primary-gold); color: var(--primary-gold);" onclick="openPaymentQR('${customer.id}', '${s.id}', ${debtVal}, 'Thanh toan ${escapeJsAttr(s.service)} ${escapeJsAttr(customer.name)}')">
+                      <i class="fa-solid fa-qrcode"></i> Thanh toán
+                    </button>
+                  ` : `
+                    <button class="btn-outline" style="padding: 4px 10px; font-size: 11px; opacity: 0.5; cursor: not-allowed; border-color: var(--success); color: var(--success);" disabled title="Lượt này đã trả đủ">
+                      <i class="fa-solid fa-circle-check"></i> Đã trả đủ
+                    </button>
+                  `}
+                  <button class="btn-outline" style="padding: 4px 10px; font-size: 11px;" onclick="openEditFullCustomerModal('${customer.id}', '${s.id}')">
+                    <i class="fa-solid fa-pen-to-square"></i> Sửa
+                  </button>
+                </div>
+              </div>
+
+              <!-- Chi tiết thanh toán -->
+              <div style="background: rgba(0,0,0,0.25); padding: 7px 10px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; font-size: 12px;">
+                <span>Đã thanh toán: <strong style="color: var(--success);">${formatMoney(paidVal)}</strong></span>
+                <span>Còn nợ lại: <strong style="color: ${debtVal > 0 ? 'var(--danger)' : 'var(--text-muted)'};">${formatMoney(debtVal)}</strong></span>
+              </div>
+
+              <!-- Chi tiết thông số kỹ thuật dịch vụ -->
+              <div style="font-size: 12.5px; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px;">
+                <div><span style="color: var(--text-muted);">Thời gian làm:</span> <strong style="color: #fff;">${formatDateTimeDisplay(s.date)}</strong></div>
+                <div><span style="color: var(--text-muted);">Hạn bảo hành:</span> <strong style="color: var(--primary-gold);">${w.expiryDateStr}</strong></div>
+                <div><span style="color: var(--text-muted);">Tình trạng:</span> <span style="color: var(--text-main);">${displayPreStatus}</span></div>
+                <div><span style="color: var(--text-muted);">Giải pháp:</span> <span style="color: var(--text-main);">${displayProcess}</span></div>
+                <div><span style="color: var(--text-muted);">Màu đã pha:</span> <span style="color: var(--text-main);">${displayColorMix}</span></div>
+              </div>
+
+              ${imagesHtml}
+            </div>
+          `;
+        });
+      }
+
+      document.getElementById('customerDetailContent').innerHTML = html;
+      document.getElementById('customerDetailModal').style.display = 'block';
+    }
+
+    function openImageViewer(imgSrc, captionText) {
+      if (!imgSrc) return;
+      document.getElementById('imageViewerImg').src = imgSrc;
+      document.getElementById('imageViewerCaption').innerText = captionText || 'Ảnh đối chiếu kết quả';
+      document.getElementById('imageViewerModal').style.display = 'flex';
+    }
+
+    function closeImageViewer() {
+      document.getElementById('imageViewerModal').style.display = 'none';
+      document.getElementById('imageViewerImg').src = '';
+    }
+
+    async function deleteCustomer(custId) {
+      if (confirm('CẢNH BÁO: Bạn có chắc chắn muốn xóa toàn bộ hồ sơ của khách hàng này không?')) {
+        db.customers = db.customers.filter(c => c.id !== custId);
+        await saveDB();
+        cloudDeleteCustomer(custId);
+        closeModal('customerDetailModal');
+        renderCustomerList();
+        renderHome();
+        renderWarrantyList();
+        alert('Đã xóa khách hàng thành công.');
+      }
+    }
+
+    function unlockRevenue() {
+      const pass = document.getElementById('passcodeInput').value;
+      if (pass === db.brand.passcode) {
+        document.getElementById('revenueLockScreen').style.display = 'none';
+        document.getElementById('revenueContent').style.display = 'block';
+        document.getElementById('passcodeInput').value = '';
+        renderRevenue();
+      } else {
+        alert('Mật khẩu không chính xác!');
+      }
+    }
+
+    function lockRevenue() {
+      document.getElementById('revenueLockScreen').style.display = 'block';
+      document.getElementById('revenueContent').style.display = 'none';
+    }
+
+    function renderRevenue() {
+      let todayStr = getTodayDateTimeString().substring(0, 10);
+      let currentMonthStr = todayStr.substring(0, 7);
+
+      let revToday = 0;
+      let revMonth = 0;
+      let serviceMap = {};
+      let customerMap = {};
+
+      if (db.customers) {
+        db.customers.forEach(c => {
+          let custTotal = 0;
+          if (c.sessions) {
+            c.sessions.forEach(s => {
+              let p = (s.paid !== undefined) ? s.paid : (s.price || 0);
+              custTotal += p;
+
+              if (s.date && s.date.startsWith(todayStr)) revToday += p;
+              if (s.date && s.date.startsWith(currentMonthStr)) revMonth += p;
+
+              if (!serviceMap[s.service]) serviceMap[s.service] = { count: 0, total: 0 };
+              serviceMap[s.service].count += 1;
+              serviceMap[s.service].total += p;
+            });
+          }
+          customerMap[c.name] = custTotal;
+        });
+      }
+
+      document.getElementById('revToday').innerText = formatMoney(revToday);
+      document.getElementById('revMonth').innerText = formatMoney(revMonth);
+
+      let servHtml = '';
+      for (let s in serviceMap) {
+        servHtml += `
+          <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color); font-size: 13px;">
+            <span>${s} (<strong>${serviceMap[s].count}</strong> lượt)</span>
+            <span style="font-weight: bold; color: var(--primary-gold);">${formatMoney(serviceMap[s].total)}</span>
+          </div>
+        `;
+      }
+      document.getElementById('serviceStatsList').innerHTML = servHtml || '<div style="font-size: 12px; color: var(--text-muted);">Chưa có dữ liệu</div>';
+
+      let custHtml = '';
+      for (let name in customerMap) {
+        custHtml += `
+          <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color); font-size: 13px;">
+            <span>${name}</span>
+            <span style="font-weight: bold;">${formatMoney(customerMap[name])}</span>
+          </div>
+        `;
+      }
+      document.getElementById('customerRevList').innerHTML = custHtml || '<div style="font-size: 12px; color: var(--text-muted);">Chưa có dữ liệu</div>';
+    }
+
+    function filterRevenue() {
+      let start = document.getElementById('revStartDate').value;
+      let end = document.getElementById('revEndDate').value;
+
+      if (!start || !end) {
+        alert('Vui lòng chọn đầy đủ ngày bắt đầu và kết thúc!');
+        return;
+      }
+
+      let startFormatted = start.split('-').reverse().join('/');
+      let endFormatted = end.split('-').reverse().join('/');
+
+      let total = 0;
+      if (db.customers) {
+        db.customers.forEach(c => {
+          if (c.sessions) {
+            c.sessions.forEach(s => {
+              let sDateOnly = s.date ? s.date.substring(0, 10) : '';
+              if (sDateOnly >= start && sDateOnly <= end) {
+                total += ((s.paid !== undefined) ? s.paid : (s.price || 0));
+              }
+            });
+          }
+        });
+      }
+
+      document.getElementById('filteredRevResult').innerText = `Tổng thực thu (${startFormatted} đến ${endFormatted}): ${formatMoney(total)}`;
+    }
+
+    // Danh sách ngân hàng hỗ trợ VietQR (mã BIN chuẩn Napas) - đủ dùng cho phần lớn tiệm nhỏ
+    const VIETQR_BANKS = [
+      { id: '970436', name: 'Vietcombank' },
+      { id: '970415', name: 'VietinBank' },
+      { id: '970418', name: 'BIDV' },
+      { id: '970405', name: 'Agribank' },
+      { id: '970407', name: 'Techcombank' },
+      { id: '970422', name: 'MB Bank' },
+      { id: '970416', name: 'ACB' },
+      { id: '970432', name: 'VPBank' },
+      { id: '970423', name: 'TPBank' },
+      { id: '970403', name: 'Sacombank' },
+      { id: '970437', name: 'HDBank' },
+      { id: '970443', name: 'SHB' },
+      { id: '970431', name: 'Eximbank' },
+      { id: '970426', name: 'MSB' },
+      { id: '970440', name: 'SeABank' },
+      { id: '970448', name: 'OCB' },
+      { id: '970441', name: 'VIB' },
+      { id: '970429', name: 'SCB' },
+      { id: '970425', name: 'ABBANK' },
+      { id: '970449', name: 'LienVietPostBank' }
+    ];
+
+    function renderBankOptions() {
+      const sel = document.getElementById('settingBankId');
+      if (!sel || sel.options.length > 0) return;
+      VIETQR_BANKS.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b.id;
+        opt.innerText = b.name;
+        sel.appendChild(opt);
+      });
+    }
+
+    // Bỏ dấu tiếng Việt - nội dung chuyển khoản nên để không dấu để tương thích mọi app ngân hàng
+    function removeVietnameseTones(str) {
+      str = str || '';
+      str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, 'a');
+      str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, 'e');
+      str = str.replace(/ì|í|ị|ỉ|ĩ/g, 'i');
+      str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, 'o');
+      str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, 'u');
+      str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, 'y');
+      str = str.replace(/đ/g, 'd');
+      str = str.replace(/À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g, 'A');
+      str = str.replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ/g, 'E');
+      str = str.replace(/Ì|Í|Ị|Ỉ|Ĩ/g, 'I');
+      str = str.replace(/Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ/g, 'O');
+      str = str.replace(/Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g, 'U');
+      str = str.replace(/Ỳ|Ý|Ỵ|Ỷ|Ỹ/g, 'Y');
+      str = str.replace(/Đ/g, 'D');
+      return str;
+    }
+
+    // Lưu tạm bối cảnh giao dịch đang thanh toán để nút "Xác nhận" biết cập nhật vào đâu
+    let currentPaymentContext = null;
+
+    // custId + sessionId: xác nhận cho 1 lượt làm cụ thể. Nếu sessionId = null: xác nhận cho TỔNG công nợ của khách (trừ dần từ lượt cũ nhất).
+    function openPaymentQR(custId, sessionId, amount, note) {
+      const bankId = db.brand && db.brand.bankId;
+      const accountNo = db.brand && db.brand.bankAccountNo;
+      const accountName = db.brand && db.brand.bankAccountName;
+
+      if (!bankId || !accountNo) {
+        alert('Vui lòng vào Cài đặt → mục "Thông tin nhận thanh toán (VietQR)" để nhập ngân hàng và số tài khoản trước khi dùng tính năng này.');
+        openSettingsModal();
+        return;
+      }
+
+      currentPaymentContext = { custId, sessionId, maxAmount: amount };
+
+      const cleanNote = removeVietnameseTones(note).replace(/[^a-zA-Z0-9 ]/g, '').trim();
+      const qrUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-compact2.png?amount=${Math.round(amount)}&addInfo=${encodeURIComponent(cleanNote)}${accountName ? '&accountName=' + encodeURIComponent(removeVietnameseTones(accountName)) : ''}`;
+
+      const bankName = (VIETQR_BANKS.find(b => b.id === bankId) || {}).name || bankId;
+
+      document.getElementById('paymentQrContent').innerHTML = `
+        <img src="${qrUrl}" style="width: 100%; max-width: 300px; border-radius: 8px; background: #fff; padding: 8px;" alt="Mã QR thanh toán">
+        <div style="margin-top: 14px; font-size: 13px; line-height: 1.8; text-align: left; background: var(--bg-input); padding: 12px; border-radius: 8px;">
+          <div>Ngân hàng: <strong style="color: #fff;">${escapeHtml(bankName)}</strong></div>
+          <div>Số tài khoản: <strong style="color: #fff;">${escapeHtml(accountNo)}</strong></div>
+          ${accountName ? `<div>Chủ tài khoản: <strong style="color: #fff;">${escapeHtml(accountName)}</strong></div>` : ''}
+          <div>Cần thu: <strong style="color: var(--primary-gold); font-size: 15px;">${formatMoney(amount)}</strong></div>
+          <div>Nội dung: <strong style="color: #fff;">${escapeHtml(cleanNote)}</strong></div>
+        </div>
+        <div class="form-group" style="margin-top: 14px; text-align: left;">
+          <label style="font-size: 12px;">Số tiền khách ĐÃ TRẢ thực tế (sửa nếu khách chỉ trả một phần)</label>
+          <input type="text" id="paymentConfirmAmount" class="form-control" value="${new Intl.NumberFormat('vi-VN').format(amount)}" inputmode="numeric" oninput="formatCurrencyInput(this)">
+        </div>
+        <button class="btn-gold" style="width: 100%; margin-top: 8px; padding: 10px;" onclick="confirmPaymentReceived()"><i class="fa-solid fa-check"></i> Xác nhận đã nhận tiền</button>
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Chỉ bấm xác nhận SAU KHI đã kiểm tra tiền vào tài khoản. Nếu khách chưa chuyển, đóng bảng này lại mà không bấm xác nhận.</div>
+      `;
+      document.getElementById('paymentQrModal').style.display = 'block';
+    }
+
+    // Xác nhận số tiền vừa nhận, cập nhật công nợ và trạng thái tương ứng
+    async function confirmPaymentReceived() {
+      if (!currentPaymentContext) return;
+      const { custId, sessionId } = currentPaymentContext;
+
+      const raw = document.getElementById('paymentConfirmAmount').value.replace(/\D/g, '');
+      const receivedAmount = parseInt(raw) || 0;
+      if (receivedAmount <= 0) {
+        alert('Số tiền không hợp lệ.');
+        return;
+      }
+
+      const customer = db.customers.find(c => c.id === custId);
+      if (!customer || !customer.sessions) return;
+
+      if (sessionId) {
+        // Xác nhận cho đúng 1 lượt làm cụ thể
+        const session = customer.sessions.find(s => s.id === sessionId);
+        if (!session) return;
+        const currentPaid = (session.paid !== undefined) ? session.paid : 0;
+        session.paid = Math.min((session.price || 0), currentPaid + receivedAmount);
+      } else {
+        // Xác nhận cho tổng công nợ: trừ dần vào các lượt còn nợ, ưu tiên lượt cũ nhất trước
+        let remaining = receivedAmount;
+        for (const session of customer.sessions) {
+          if (remaining <= 0) break;
+          const currentPaid = (session.paid !== undefined) ? session.paid : (session.price || 0);
+          const debt = Math.max(0, (session.price || 0) - currentPaid);
+          if (debt <= 0) continue;
+          const applied = Math.min(debt, remaining);
+          session.paid = currentPaid + applied;
+          remaining -= applied;
+        }
+      }
+
+      await saveDB();
+      syncCustomerToCloud(custId);
+      closeModal('paymentQrModal');
+      openCustomerDetail(custId);
+      renderCustomerList();
+      alert('Đã ghi nhận thanh toán ' + formatMoney(receivedAmount) + '.');
+    }
+
+    function openSettingsModal() {
+      renderBankOptions();
+      document.getElementById('settingTitle').value = db.brand.title;
+      document.getElementById('settingSlogan').value = db.brand.slogan;
+      document.getElementById('settingLogo').value = (db.brand.logo === defaultBrandLogo) ? '' : db.brand.logo;
+      document.getElementById('settingMsgTemplate').value = db.brand.msgTemplate || defaultReminderTemplate;
+      document.getElementById('settingPasscode').value = '';
+      document.getElementById('settingBankId').value = db.brand.bankId || '970436';
+      document.getElementById('settingBankAccountNo').value = db.brand.bankAccountNo || '';
+      document.getElementById('settingBankAccountName').value = db.brand.bankAccountName || '';
+      document.getElementById('settingsModal').style.display = 'block';
+      renderCloudSettingsBox();
+    }
+
+    async function saveBrandSettings() {
+      db.brand.title = document.getElementById('settingTitle').value || db.brand.title;
+      db.brand.slogan = document.getElementById('settingSlogan').value || db.brand.slogan;
+      let logoInput = document.getElementById('settingLogo').value.trim();
+      db.brand.logo = logoInput || defaultBrandLogo;
+      db.brand.msgTemplate = document.getElementById('settingMsgTemplate').value || defaultReminderTemplate;
+      db.brand.bankId = document.getElementById('settingBankId').value;
+      db.brand.bankAccountNo = document.getElementById('settingBankAccountNo').value.trim();
+      db.brand.bankAccountName = document.getElementById('settingBankAccountName').value.trim();
+
+      let newPass = document.getElementById('settingPasscode').value;
+      if (newPass) db.brand.passcode = newPass;
+
+      await saveDB();
+      syncBrandToCloud();
+      renderHome();
+      closeModal('settingsModal');
+      alert('Đã cập nhật cài đặt thành công!');
+    }
+
+    async function exportDataFile() {
+      // Ghi lại thời điểm sao lưu gần nhất TRƯỚC khi xuất, để banner nhắc nhở tính đúng
+      if (!db.brand) db.brand = {};
+      db.brand.lastExportDate = getTodayDateTimeString();
+      await saveDB();
+
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db, null, 2));
+      const downloadAnchor = document.createElement('a');
+      const dateStr = getTodayDateTimeString().replace(/[:T]/g, '-');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `SaoLuu_PhunXam_NgocAnh_${dateStr}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+
+      renderHome(); // cập nhật lại banner nhắc sao lưu trên trang chủ
+    }
+
+    // Xử lý dữ liệu import dùng chung cho cả 2 cách: chọn file HOẶC dán nội dung text
+    async function processImportedJsonText(jsonText) {
+      try {
+        const importedDB = JSON.parse(jsonText);
+        if (importedDB && importedDB.customers) {
+          db = importedDB;
+          if (!db.appointments) db.appointments = [];
+          await saveDB();
+          renderHome();
+          renderCustomerList();
+          renderWarrantyList();
+          if (cloudUser) {
+            syncBrandToCloud();
+            db.customers.forEach(c => syncCustomerToCloud(c.id));
+            (db.appointments || []).forEach(a => syncAppointmentToCloud(a.id));
+          }
+          alert("Phục hồi dữ liệu thành công! Đã nạp " + importedDB.customers.length + " khách hàng.");
+          closeModal('settingsModal');
+        } else {
+          alert("Nội dung không đúng định dạng sao lưu của ứng dụng! (Thiếu trường 'customers')");
+        }
+      } catch (err) {
+        alert("Lỗi đọc dữ liệu: " + err.message);
+      }
+    }
+
+    function importDataFromPaste() {
+      const text = document.getElementById('importPasteText').value.trim();
+      if (!text) {
+        alert('Vui lòng dán nội dung file sao lưu vào ô trước khi bấm nút này.');
+        return;
+      }
+      processImportedJsonText(text);
+    }
+
+    function importDataFile(event) {
+      const file = event.target.files[0];
+      if (!file) {
+        alert('Không nhận được file nào (có thể do huỷ chọn file).');
+        return;
+      }
+      alert('Đã chọn file: ' + file.name + ' (' + Math.round(file.size / 1024) + ' KB). Đang đọc nội dung...');
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        processImportedJsonText(e.target.result);
+      };
+      reader.onerror = function(e) {
+        alert('Lỗi khi đọc file từ điện thoại: ' + (reader.error ? reader.error.message : 'không rõ nguyên nhân'));
+      };
+      reader.readAsText(file);
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).style.display = 'none';
+    }
+
+    window.onload = async function() {
+      await initDB();
+      initFirebase();
+      showAutoWarrantyReminderPopup();
+    };
+  </script>
+</body>
+</html>
