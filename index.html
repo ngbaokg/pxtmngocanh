@@ -965,8 +965,36 @@
         <input type="tel" id="apptPhone" class="form-control" placeholder="Nhập số điện thoại...">
       </div>
       <div class="form-group">
-        <label>Dịch vụ dự kiến</label>
-        <input type="text" id="apptService" class="form-control" placeholder="VD: Phun mày, Nâng mũi...">
+        <label>Dịch vụ dự kiến (* Nhấn nhóm để chọn chi tiết)</label>
+        <div class="service-btn-grid">
+          <div class="service-parent-btn active" id="appt-btn-grp-moi" onclick="toggleApptServiceGroup('moi')">
+            <span>Môi</span> <i class="fa-solid fa-chevron-down" style="font-size: 10px;"></i>
+          </div>
+          <div class="service-parent-btn" id="appt-btn-grp-may" onclick="toggleApptServiceGroup('may')">
+            <span>Mày</span> <i class="fa-solid fa-chevron-down" style="font-size: 10px;"></i>
+          </div>
+          <div class="service-parent-btn" id="appt-btn-grp-mi" onclick="toggleApptServiceGroup('mi')">
+            <span>Mí mắt</span> <i class="fa-solid fa-chevron-down" style="font-size: 10px;"></i>
+          </div>
+          <div class="service-parent-btn" id="appt-btn-grp-combo" onclick="toggleApptServiceGroup('combo')">
+            <span>Combo</span> <i class="fa-solid fa-chevron-down" style="font-size: 10px;"></i>
+          </div>
+          <div class="service-parent-btn" id="appt-btn-grp-nhuhoa" onclick="toggleApptServiceGroup('nhuhoa')">
+            <span>Nhũ hoa</span> <i class="fa-solid fa-chevron-down" style="font-size: 10px;"></i>
+          </div>
+          <div class="service-parent-btn" id="appt-btn-grp-xoa" onclick="toggleApptServiceGroup('xoa')">
+            <span>Xóa</span> <i class="fa-solid fa-chevron-down" style="font-size: 10px;"></i>
+          </div>
+        </div>
+
+        <div class="sub-service-container" id="apptSubServiceContainer">
+          <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;" id="apptSubServiceTitle">Chọn loại dịch vụ Môi:</div>
+          <div class="sub-service-grid" id="apptSubServiceGrid"></div>
+        </div>
+        <input type="hidden" id="apptService" value="">
+        <div style="font-size: 12px; color: var(--primary-gold); margin-top: -6px;">
+          Dịch vụ đã chọn: <strong id="apptDisplaySelectedService">-</strong>
+        </div>
       </div>
       <div class="form-group">
         <label>Ngày giờ hẹn</label>
@@ -1933,15 +1961,21 @@
         document.getElementById('appointmentModalTitle').innerHTML = '<i class="fa-solid fa-calendar-pen"></i> Sửa lịch hẹn';
         document.getElementById('apptName').value = appt.name || '';
         document.getElementById('apptPhone').value = appt.phone || '';
-        document.getElementById('apptService').value = appt.service || '';
         document.getElementById('apptDateTime').value = appt.dateTime || '';
         document.getElementById('apptNote').value = appt.note || '';
+
+        // Tìm đúng nhóm dịch vụ chứa dịch vụ đã lưu để hiện lại đúng chip
+        let groupFound = 'moi';
+        for (let g in serviceCategories) {
+          if (serviceCategories[g].items.includes(appt.service)) { groupFound = g; break; }
+        }
+        toggleApptServiceGroup(groupFound, appt.service || null);
       } else {
         document.getElementById('appointmentModalTitle').innerHTML = '<i class="fa-solid fa-calendar-plus"></i> Thêm lịch hẹn';
         document.getElementById('apptName').value = '';
         document.getElementById('apptPhone').value = '';
-        document.getElementById('apptService').value = '';
         document.getElementById('apptNote').value = '';
+        toggleApptServiceGroup('moi');
         // Mặc định gợi ý hẹn vào cùng giờ, 1 ngày sau hôm nay
         const suggested = new Date(Date.now() + 24 * 60 * 60 * 1000);
         document.getElementById('apptDateTime').value = suggested.toISOString().slice(0, 16);
@@ -2022,8 +2056,18 @@
       openAddCustomerModal();
       document.getElementById('custName').value = appt.name || '';
       document.getElementById('custPhone').value = appt.phone || '';
-      if (appt.service || appt.note) {
-        document.getElementById('custPreStatus').value = 'Hẹn làm: ' + (appt.service || '') + (appt.note ? ' — ' + appt.note : '');
+
+      // Tự chọn sẵn đúng dịch vụ đã hẹn (khớp chip) thay vì phải chọn lại từ đầu
+      if (appt.service) {
+        let groupFound = null;
+        for (let g in serviceCategories) {
+          if (serviceCategories[g].items.includes(appt.service)) { groupFound = g; break; }
+        }
+        if (groupFound) toggleServiceGroup(groupFound, appt.service);
+      }
+
+      if (appt.note) {
+        document.getElementById('custPreStatus').value = 'Ghi chú lúc hẹn: ' + appt.note;
       }
     }
 
@@ -2203,7 +2247,7 @@
 
     function toggleServiceGroup(groupKey, preselectedSub = null) {
       currentGroupKey = groupKey;
-      document.querySelectorAll('.service-parent-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('#customerModal .service-parent-btn').forEach(btn => btn.classList.remove('active'));
       const activeBtn = document.getElementById('btn-grp-' + groupKey);
       if (activeBtn) activeBtn.classList.add('active');
 
@@ -2223,7 +2267,7 @@
     }
 
     function selectSubService(subItemName) {
-      document.querySelectorAll('.sub-chip').forEach(c => {
+      document.querySelectorAll('#customerModal .sub-chip').forEach(c => {
         if (c.innerText.trim() === subItemName) {
           c.classList.add('selected');
         } else {
@@ -2232,6 +2276,41 @@
       });
       document.getElementById('custService').value = subItemName;
       document.getElementById('displaySelectedService').innerText = subItemName;
+    }
+
+    let currentApptGroupKey = 'moi';
+
+    function toggleApptServiceGroup(groupKey, preselectedSub = null) {
+      currentApptGroupKey = groupKey;
+      document.querySelectorAll('#appointmentModal .service-parent-btn').forEach(btn => btn.classList.remove('active'));
+      const activeBtn = document.getElementById('appt-btn-grp-' + groupKey);
+      if (activeBtn) activeBtn.classList.add('active');
+
+      const grp = serviceCategories[groupKey];
+      document.getElementById('apptSubServiceTitle').innerText = grp.title;
+
+      const subGrid = document.getElementById('apptSubServiceGrid');
+      let targetSub = preselectedSub || grp.items[0];
+
+      subGrid.innerHTML = grp.items.map(item => `
+        <div class="sub-chip ${item === targetSub ? 'selected' : ''}" onclick="selectApptSubService('${item}')">
+          ${item}
+        </div>
+      `).join('');
+
+      selectApptSubService(targetSub);
+    }
+
+    function selectApptSubService(subItemName) {
+      document.querySelectorAll('#appointmentModal .sub-chip').forEach(c => {
+        if (c.innerText.trim() === subItemName) {
+          c.classList.add('selected');
+        } else {
+          c.classList.remove('selected');
+        }
+      });
+      document.getElementById('apptService').value = subItemName;
+      document.getElementById('apptDisplaySelectedService').innerText = subItemName;
     }
 
     function selectWarranty(el, val) {
