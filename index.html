@@ -1182,8 +1182,16 @@
         <input type="text" id="settingSlogan" class="form-control">
       </div>
       <div class="form-group">
-        <label>Đường dẫn ảnh logo (URL hoặc để trống)</label>
-        <input type="text" id="settingLogo" class="form-control">
+        <label>Logo cửa hàng</label>
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <img id="settingLogoPreview" src="" alt="Logo" style="width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-gold); background: #111;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <button type="button" class="btn-outline" style="padding: 7px 12px; font-size: 12px;" onclick="document.getElementById('settingLogoFileInput').click()"><i class="fa-solid fa-camera-retro"></i> Chụp / Tải ảnh logo</button>
+            <button type="button" class="btn-outline" style="padding: 7px 12px; font-size: 12px; border-color: var(--danger); color: var(--danger);" onclick="resetSettingLogoToDefault()"><i class="fa-solid fa-rotate-left"></i> Dùng logo mặc định</button>
+          </div>
+        </div>
+        <input type="file" id="settingLogoFileInput" accept="image/*" style="display: none;" onchange="handleLogoUpload(event)">
+        <input type="hidden" id="settingLogo">
       </div>
       <div class="form-group">
         <label>Mẫu tin nhắn nhắc bảo hành ({TEN_KH}, {DICH_VU}, {HAN_BH}, {TEN_TIEM})</label>
@@ -2260,6 +2268,52 @@
       } else {
         document.getElementById('imgAfterInput').click();
       }
+    }
+
+    // Tải/chụp ảnh logo cửa hàng - tự nén giống ảnh trước/sau khi làm
+    function handleLogoUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.src = e.target.result;
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const maxDimension = 400;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxDimension) {
+              height = Math.round((height * maxDimension) / width);
+              width = maxDimension;
+            }
+          } else {
+            if (height > maxDimension) {
+              width = Math.round((width * maxDimension) / height);
+              height = maxDimension;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+          document.getElementById('settingLogoPreview').src = compressedDataUrl;
+          document.getElementById('settingLogo').value = compressedDataUrl;
+        };
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function resetSettingLogoToDefault() {
+      document.getElementById('settingLogoPreview').src = defaultBrandLogo;
+      document.getElementById('settingLogo').value = defaultBrandLogo;
     }
 
     function handleImageUpload(event, imgId, textId, type) {
@@ -3876,7 +3930,8 @@
       renderBankOptions();
       document.getElementById('settingTitle').value = db.brand.title;
       document.getElementById('settingSlogan').value = db.brand.slogan;
-      document.getElementById('settingLogo').value = (db.brand.logo === defaultBrandLogo) ? '' : db.brand.logo;
+      document.getElementById('settingLogo').value = db.brand.logo || defaultBrandLogo;
+      document.getElementById('settingLogoPreview').src = db.brand.logo || defaultBrandLogo;
       document.getElementById('settingMsgTemplate').value = db.brand.msgTemplate || defaultReminderTemplate;
       document.getElementById('settingPasscode').value = '';
       document.getElementById('settingBankId').value = db.brand.bankId || '970436';
