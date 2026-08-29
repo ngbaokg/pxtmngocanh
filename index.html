@@ -1072,6 +1072,27 @@
     </div>
   </div>
 
+  <!-- MODAL: THÔNG BÁO (thay cho alert() gốc của trình duyệt) -->
+  <div id="customAlertModal" class="modal">
+    <div class="modal-content" style="max-width: 360px; text-align: center;">
+      <div style="font-size: 32px; color: var(--primary-gold); margin-bottom: 10px;"><i class="fa-solid fa-circle-info"></i></div>
+      <div id="customAlertMessage" style="font-size: 14px; color: #fff; white-space: pre-line; line-height: 1.6; margin-bottom: 18px;"></div>
+      <button class="btn-gold" onclick="closeCustomAlert()">OK</button>
+    </div>
+  </div>
+
+  <!-- MODAL: XÁC NHẬN (thay cho confirm() gốc của trình duyệt) -->
+  <div id="customConfirmModal" class="modal">
+    <div class="modal-content" style="max-width: 360px; text-align: center;">
+      <div style="font-size: 32px; color: var(--warning); margin-bottom: 10px;"><i class="fa-solid fa-triangle-exclamation"></i></div>
+      <div id="customConfirmMessage" style="font-size: 14px; color: #fff; white-space: pre-line; line-height: 1.6; margin-bottom: 18px;"></div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <button class="btn-outline" style="justify-content: center; padding: 10px;" onclick="resolveCustomConfirm(false)">Huỷ</button>
+        <button class="btn-gold" onclick="resolveCustomConfirm(true)">OK</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL XEM ẢNH PHÓNG TO (LIGHTBOX) - hỗ trợ zoom 2 ngón & vuốt chuyển ảnh -->
   <div id="imageViewerModal" onclick="closeImageViewer()">
     <div style="width: 100%; max-width: 700px; text-align: right; margin-bottom: 8px;">
@@ -1577,7 +1598,7 @@
       customer.updatedAt = Date.now();
       const size = JSON.stringify(customer).length;
       if (size > FIRESTORE_DOC_SAFE_LIMIT) {
-        alert('Hồ sơ khách "' + customer.name + '" có quá nhiều ảnh/dữ liệu để đồng bộ lên mây (vẫn được lưu an toàn trên máy này). Hãy xoá bớt ảnh cũ ở các lượt làm lâu rồi nếu muốn đồng bộ đầy đủ.');
+        showAppAlert('Hồ sơ khách "' + customer.name + '" có quá nhiều ảnh/dữ liệu để đồng bộ lên mây (vẫn được lưu an toàn trên máy này). Hãy xoá bớt ảnh cũ ở các lượt làm lâu rồi nếu muốn đồng bộ đầy đủ.');
         return;
       }
 
@@ -1586,7 +1607,7 @@
         .catch(function(err) {
           console.error('Lỗi đồng bộ khách hàng lên mây:', err);
           if (isOfflineFirestoreError(err)) return; // Mất mạng: dữ liệu đã lưu máy, sẽ tự đồng bộ khi có mạng lại
-          alert('Không thể đồng bộ hồ sơ khách hàng lên mây (đã lưu trên máy này). Kiểm tra kết nối mạng và thử lại sau.');
+          showAppAlert('Không thể đồng bộ hồ sơ khách hàng lên mây (đã lưu trên máy này). Kiểm tra kết nối mạng và thử lại sau.');
         });
     }
 
@@ -1608,7 +1629,7 @@
         .catch(function(err) {
           console.error('Lỗi đồng bộ lịch hẹn lên mây:', err);
           if (isOfflineFirestoreError(err)) return; // Mất mạng: dữ liệu đã lưu máy, sẽ tự đồng bộ khi có mạng lại
-          alert('Không thể đồng bộ lịch hẹn lên mây (đã lưu trên máy này). Lỗi: ' + (err && err.message ? err.message : err) + '\n\nNếu lỗi ghi "Missing or insufficient permissions", bạn cần cập nhật lại Firestore Rules trong Firebase Console để thêm quyền cho mục "appointments".');
+          showAppAlert('Không thể đồng bộ lịch hẹn lên mây (đã lưu trên máy này). Lỗi: ' + (err && err.message ? err.message : err) + '\n\nNếu lỗi ghi "Missing or insufficient permissions", bạn cần cập nhật lại Firestore Rules trong Firebase Console để thêm quyền cho mục "appointments".');
         });
     }
 
@@ -1630,12 +1651,12 @@
     }
 
     // Đẩy TOÀN BỘ dữ liệu hiện có trên máy lên mây (dùng khi mới bật đồng bộ lần đầu, hoặc sau khi phục hồi file sao lưu)
-    function cloudPushAllToCloud() {
+    async function cloudPushAllToCloud() {
       if (!cloudFirestore || !cloudUser) {
-        alert('Vui lòng đăng nhập trước.');
+        showAppAlert('Vui lòng đăng nhập trước.');
         return;
       }
-      if (!confirm('Đẩy toàn bộ dữ liệu khách hàng trên máy này lên mây? Dữ liệu trên mây có cùng khách sẽ bị ghi đè bằng dữ liệu trên máy này.')) return;
+      if (!(await showAppConfirm('Đẩy toàn bộ dữ liệu khách hàng trên máy này lên mây? Dữ liệu trên mây có cùng khách sẽ bị ghi đè bằng dữ liệu trên máy này.'))) return;
 
       syncBrandToCloud();
       let count = 0;
@@ -1646,7 +1667,7 @@
       (db.appointments || []).forEach(a => {
         syncAppointmentToCloud(a.id);
       });
-      alert('Đã bắt đầu đồng bộ ' + count + ' hồ sơ khách hàng lên mây.');
+      showAppAlert('Đã bắt đầu đồng bộ ' + count + ' hồ sơ khách hàng lên mây.');
     }
 
     let db = {
@@ -1689,7 +1710,7 @@
       try {
         await localforage.setItem('na_pmu_db', db);
       } catch (e) {
-        alert("Lỗi khi lưu dữ liệu: " + e.message);
+        showAppAlert("Lỗi khi lưu dữ liệu: " + e.message);
       }
     }
 
@@ -2040,15 +2061,15 @@
       const note = document.getElementById('apptNote').value.trim();
 
       if (!name || !phone) {
-        alert('Vui lòng nhập Tên và Số điện thoại khách hẹn!');
+        showAppAlert('Vui lòng nhập Tên và Số điện thoại khách hẹn!');
         return;
       }
       if (!isValidPhone(phone)) {
-        alert('Số điện thoại không hợp lệ! Vui lòng nhập 9-11 chữ số.');
+        showAppAlert('Số điện thoại không hợp lệ! Vui lòng nhập 9-11 chữ số.');
         return;
       }
       if (!dateTime) {
-        alert('Vui lòng chọn ngày giờ hẹn!');
+        showAppAlert('Vui lòng chọn ngày giờ hẹn!');
         return;
       }
 
@@ -2080,7 +2101,7 @@
       syncAppointmentToCloud(apptId);
       closeModal('appointmentModal');
       renderAppointmentList();
-      alert('Đã lưu lịch hẹn thành công!');
+      showAppAlert('Đã lưu lịch hẹn thành công!');
     }
 
     async function markAppointmentStatus(id, status) {
@@ -2120,7 +2141,7 @@
     }
 
     async function deleteAppointment(id) {
-      if (!confirm('Bạn có chắc muốn xóa lịch hẹn này không?')) return;
+      if (!(await showAppConfirm('Bạn có chắc muốn xóa lịch hẹn này không?'))) return;
       db.appointments = (db.appointments || []).filter(a => a.id !== id);
       await saveDB();
       cloudDeleteAppointment(id);
@@ -2533,7 +2554,7 @@
     async function deleteSelectedCustomers() {
       const count = selectedCustomerIds.size;
       if (count === 0) return;
-      if (!confirm(`CẢNH BÁO: Bạn có chắc chắn muốn xóa toàn bộ hồ sơ của ${count} khách hàng đã chọn không? Hành động này không thể hoàn tác.`)) return;
+      if (!(await showAppConfirm(`CẢNH BÁO: Bạn có chắc chắn muốn xóa toàn bộ hồ sơ của ${count} khách hàng đã chọn không? Hành động này không thể hoàn tác.`))) return;
 
       const idsToDelete = Array.from(selectedCustomerIds);
       db.customers = db.customers.filter(c => !selectedCustomerIds.has(c.id));
@@ -2543,7 +2564,7 @@
       exitCustomerSelectMode();
       renderHome();
       renderWarrantyList();
-      alert(`Đã xóa ${count} khách hàng thành công.`);
+      showAppAlert(`Đã xóa ${count} khách hàng thành công.`);
     }
 
     function renderCustomerSelectBar() {
@@ -2941,7 +2962,7 @@
     function sendViaZalo() {
       const text = document.getElementById('remindMessageBody').value;
       if (!currentRemindPhone) {
-        alert('Khách hàng chưa có số điện thoại!');
+        showAppAlert('Khách hàng chưa có số điện thoại!');
         return;
       }
 
@@ -2959,7 +2980,7 @@
         const delimiter = isIOS ? '&' : '?';
         window.location.href = `sms:${currentRemindPhone}${delimiter}body=${text}`;
       } else {
-        alert('Khách hàng chưa có số điện thoại!');
+        showAppAlert('Khách hàng chưa có số điện thoại!');
       }
     }
 
@@ -3125,7 +3146,7 @@
       const paid = paidRaw !== "" ? parseInt(paidRaw) : 0;
 
       if (paid > price) {
-        if (!confirm(`Số tiền đã trả (${formatMoney(paid)}) đang lớn hơn tổng giá tiền (${formatMoney(price)}). Bạn có chắc muốn lưu như vậy không?`)) {
+        if (!(await showAppConfirm(`Số tiền đã trả (${formatMoney(paid)}) đang lớn hơn tổng giá tiền (${formatMoney(price)}). Bạn có chắc muốn lưu như vậy không?`))) {
           return;
         }
       }
@@ -3170,11 +3191,11 @@
             const address = document.getElementById('custAddress').value.trim();
 
             if (!name || !phone) {
-              alert('Vui lòng nhập Tên và Số điện thoại!');
+              showAppAlert('Vui lòng nhập Tên và Số điện thoại!');
               return;
             }
             if (!isValidPhone(phone)) {
-              alert('Số điện thoại không hợp lệ! Vui lòng nhập 9-11 chữ số (VD: 0908123456).');
+              showAppAlert('Số điện thoại không hợp lệ! Vui lòng nhập 9-11 chữ số (VD: 0908123456).');
               return;
             }
             customer.name = name;
@@ -3202,11 +3223,11 @@
         const address = document.getElementById('custAddress').value.trim();
 
         if (!name || !phone) {
-          alert('Vui lòng nhập Tên và Số điện thoại!');
+          showAppAlert('Vui lòng nhập Tên và Số điện thoại!');
           return;
         }
         if (!isValidPhone(phone)) {
-          alert('Số điện thoại không hợp lệ! Vui lòng nhập 9-11 chữ số (VD: 0908123456).');
+          showAppAlert('Số điện thoại không hợp lệ! Vui lòng nhập 9-11 chữ số (VD: 0908123456).');
           return;
         }
 
@@ -3238,10 +3259,10 @@
             ((db.customers.find(c => c.id === savedCustomerId) || {}).name) || '';
           openPaymentQR(savedCustomerId, sessionData.id, debt, 'Thanh toan ' + sessionData.service + ' ' + custNameForNote);
         } else {
-          alert('Lượt này không còn nợ, không cần tạo mã thanh toán.');
+          showAppAlert('Lượt này không còn nợ, không cần tạo mã thanh toán.');
         }
       } else {
-        alert('Đã cập nhật hồ sơ khách hàng thành công!');
+        showAppAlert('Đã cập nhật hồ sơ khách hàng thành công!');
       }
     }
 
@@ -3599,7 +3620,7 @@
     }
 
     async function deleteCustomer(custId) {
-      if (confirm('CẢNH BÁO: Bạn có chắc chắn muốn xóa toàn bộ hồ sơ của khách hàng này không?')) {
+      if (await showAppConfirm('CẢNH BÁO: Bạn có chắc chắn muốn xóa toàn bộ hồ sơ của khách hàng này không?')) {
         db.customers = db.customers.filter(c => c.id !== custId);
         await saveDB();
         cloudDeleteCustomer(custId);
@@ -3607,7 +3628,7 @@
         renderCustomerList();
         renderHome();
         renderWarrantyList();
-        alert('Đã xóa khách hàng thành công.');
+        showAppAlert('Đã xóa khách hàng thành công.');
       }
     }
 
@@ -3619,7 +3640,7 @@
         document.getElementById('passcodeInput').value = '';
         renderRevenue();
       } else {
-        alert('Mật khẩu không chính xác!');
+        showAppAlert('Mật khẩu không chính xác!');
       }
     }
 
@@ -3688,7 +3709,7 @@
       let end = document.getElementById('revEndDate').value;
 
       if (!start || !end) {
-        alert('Vui lòng chọn đầy đủ ngày bắt đầu và kết thúc!');
+        showAppAlert('Vui lòng chọn đầy đủ ngày bắt đầu và kết thúc!');
         return;
       }
 
@@ -3777,7 +3798,7 @@
       const accountName = db.brand && db.brand.bankAccountName;
 
       if (!bankId || !accountNo) {
-        alert('Vui lòng vào Cài đặt → mục "Thông tin nhận thanh toán (VietQR)" để nhập ngân hàng và số tài khoản trước khi dùng tính năng này.');
+        showAppAlert('Vui lòng vào Cài đặt → mục "Thông tin nhận thanh toán (VietQR)" để nhập ngân hàng và số tài khoản trước khi dùng tính năng này.');
         openSettingsModal();
         return;
       }
@@ -3816,7 +3837,7 @@
       const raw = document.getElementById('paymentConfirmAmount').value.replace(/\D/g, '');
       const receivedAmount = parseInt(raw) || 0;
       if (receivedAmount <= 0) {
-        alert('Số tiền không hợp lệ.');
+        showAppAlert('Số tiền không hợp lệ.');
         return;
       }
 
@@ -3848,7 +3869,7 @@
       closeModal('paymentQrModal');
       openCustomerDetail(custId);
       renderCustomerList();
-      alert('Đã ghi nhận thanh toán ' + formatMoney(receivedAmount) + '.');
+      showAppAlert('Đã ghi nhận thanh toán ' + formatMoney(receivedAmount) + '.');
     }
 
     function openSettingsModal() {
@@ -3882,7 +3903,7 @@
       syncBrandToCloud();
       renderHome();
       closeModal('settingsModal');
-      alert('Đã cập nhật cài đặt thành công!');
+      showAppAlert('Đã cập nhật cài đặt thành công!');
     }
 
     async function exportDataFile() {
@@ -3919,20 +3940,20 @@
             db.customers.forEach(c => syncCustomerToCloud(c.id));
             (db.appointments || []).forEach(a => syncAppointmentToCloud(a.id));
           }
-          alert("Phục hồi dữ liệu thành công! Đã nạp " + importedDB.customers.length + " khách hàng.");
+          showAppAlert("Phục hồi dữ liệu thành công! Đã nạp " + importedDB.customers.length + " khách hàng.");
           closeModal('settingsModal');
         } else {
-          alert("Nội dung không đúng định dạng sao lưu của ứng dụng! (Thiếu trường 'customers')");
+          showAppAlert("Nội dung không đúng định dạng sao lưu của ứng dụng! (Thiếu trường 'customers')");
         }
       } catch (err) {
-        alert("Lỗi đọc dữ liệu: " + err.message);
+        showAppAlert("Lỗi đọc dữ liệu: " + err.message);
       }
     }
 
     function importDataFromPaste() {
       const text = document.getElementById('importPasteText').value.trim();
       if (!text) {
-        alert('Vui lòng dán nội dung file sao lưu vào ô trước khi bấm nút này.');
+        showAppAlert('Vui lòng dán nội dung file sao lưu vào ô trước khi bấm nút này.');
         return;
       }
       processImportedJsonText(text);
@@ -3941,22 +3962,51 @@
     function importDataFile(event) {
       const file = event.target.files[0];
       if (!file) {
-        alert('Không nhận được file nào (có thể do huỷ chọn file).');
+        showAppAlert('Không nhận được file nào (có thể do huỷ chọn file).');
         return;
       }
-      alert('Đã chọn file: ' + file.name + ' (' + Math.round(file.size / 1024) + ' KB). Đang đọc nội dung...');
+      showAppAlert('Đã chọn file: ' + file.name + ' (' + Math.round(file.size / 1024) + ' KB). Đang đọc nội dung...');
       const reader = new FileReader();
       reader.onload = function(e) {
         processImportedJsonText(e.target.result);
       };
       reader.onerror = function(e) {
-        alert('Lỗi khi đọc file từ điện thoại: ' + (reader.error ? reader.error.message : 'không rõ nguyên nhân'));
+        showAppAlert('Lỗi khi đọc file từ điện thoại: ' + (reader.error ? reader.error.message : 'không rõ nguyên nhân'));
       };
       reader.readAsText(file);
     }
 
     function closeModal(id) {
       document.getElementById(id).style.display = 'none';
+    }
+
+    // --- Thông báo & Xác nhận tự thiết kế (thay cho alert()/confirm() gốc của trình duyệt,
+    //     vì hộp thoại gốc luôn tự hiện thêm dòng tên domain mà không cách nào ẩn được) ---
+    function showAppAlert(message) {
+      document.getElementById('customAlertMessage').innerText = message;
+      document.getElementById('customAlertModal').style.display = 'block';
+    }
+
+    function closeCustomAlert() {
+      closeModal('customAlertModal');
+    }
+
+    let _customConfirmResolver = null;
+
+    function showAppConfirm(message) {
+      document.getElementById('customConfirmMessage').innerText = message;
+      document.getElementById('customConfirmModal').style.display = 'block';
+      return new Promise((resolve) => {
+        _customConfirmResolver = resolve;
+      });
+    }
+
+    function resolveCustomConfirm(result) {
+      closeModal('customConfirmModal');
+      if (_customConfirmResolver) {
+        _customConfirmResolver(result);
+        _customConfirmResolver = null;
+      }
     }
 
     window.onload = async function() {
