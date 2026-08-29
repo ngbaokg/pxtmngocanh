@@ -1653,9 +1653,20 @@
       db.brand.updatedAt = Date.now();
       // Không đồng bộ mật mã doanh thu lên mây để tránh lộ qua kênh khác - mỗi thiết bị tự đặt mật mã riêng nếu cần
       const brandToSync = Object.assign({}, db.brand);
+
+      const size = JSON.stringify(brandToSync).length;
+      if (size > FIRESTORE_DOC_SAFE_LIMIT) {
+        showAppAlert('Logo/ảnh đại diện đang quá lớn để đồng bộ lên mây (vẫn lưu được trên máy này). Hãy chọn ảnh logo có dung lượng nhỏ hơn.');
+        return;
+      }
+
       cloudFirestore.collection('users').doc(cloudUser.uid)
         .set(brandToSync, { merge: true })
-        .catch(function(err) { console.error('Lỗi đồng bộ cài đặt lên mây:', err); });
+        .catch(function(err) {
+          console.error('Lỗi đồng bộ cài đặt lên mây:', err);
+          if (isOfflineFirestoreError(err)) return; // Mất mạng: đã lưu máy, sẽ tự đồng bộ khi có mạng lại
+          showAppAlert('Không thể đồng bộ logo/cài đặt lên mây (đã lưu trên máy này). Lỗi: ' + (err && err.message ? err.message : err));
+        });
     }
 
     // Đẩy TOÀN BỘ dữ liệu hiện có trên máy lên mây (dùng khi mới bật đồng bộ lần đầu, hoặc sau khi phục hồi file sao lưu)
