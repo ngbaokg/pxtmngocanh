@@ -1561,7 +1561,10 @@
       appt.updatedAt = Date.now();
       cloudFirestore.collection('users').doc(cloudUser.uid).collection('appointments').doc(apptId)
         .set(appt)
-        .catch(function(err) { console.error('Lỗi đồng bộ lịch hẹn lên mây:', err); });
+        .catch(function(err) {
+          console.error('Lỗi đồng bộ lịch hẹn lên mây:', err);
+          alert('Không thể đồng bộ lịch hẹn lên mây (đã lưu trên máy này). Lỗi: ' + (err && err.message ? err.message : err) + '\n\nNếu lỗi ghi "Missing or insufficient permissions", bạn cần cập nhật lại Firestore Rules trong Firebase Console để thêm quyền cho mục "appointments".');
+        });
     }
 
     function cloudDeleteAppointment(apptId) {
