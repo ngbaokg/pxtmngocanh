@@ -1526,6 +1526,13 @@
     // Giới hạn an toàn dưới ngưỡng 1MB thật của Firestore, để còn dư chỗ cho các trường khác
     const FIRESTORE_DOC_SAFE_LIMIT = 900000;
 
+    // Phân biệt lỗi do MẤT MẠNG (bình thường, không cần báo ồn ào) với lỗi cấu hình/quyền thật sự
+    function isOfflineFirestoreError(err) {
+      if (!navigator.onLine) return true;
+      if (!err) return false;
+      return err.code === 'unavailable' || (err.message && /network|offline/i.test(err.message));
+    }
+
     function syncCustomerToCloud(customerId) {
       if (!cloudFirestore || !cloudUser) return;
       const customer = db.customers.find(c => c.id === customerId);
@@ -1542,6 +1549,7 @@
         .set(customer)
         .catch(function(err) {
           console.error('Lỗi đồng bộ khách hàng lên mây:', err);
+          if (isOfflineFirestoreError(err)) return; // Mất mạng: dữ liệu đã lưu máy, sẽ tự đồng bộ khi có mạng lại
           alert('Không thể đồng bộ hồ sơ khách hàng lên mây (đã lưu trên máy này). Kiểm tra kết nối mạng và thử lại sau.');
         });
     }
@@ -1563,6 +1571,7 @@
         .set(appt)
         .catch(function(err) {
           console.error('Lỗi đồng bộ lịch hẹn lên mây:', err);
+          if (isOfflineFirestoreError(err)) return; // Mất mạng: dữ liệu đã lưu máy, sẽ tự đồng bộ khi có mạng lại
           alert('Không thể đồng bộ lịch hẹn lên mây (đã lưu trên máy này). Lỗi: ' + (err && err.message ? err.message : err) + '\n\nNếu lỗi ghi "Missing or insufficient permissions", bạn cần cập nhật lại Firestore Rules trong Firebase Console để thêm quyền cho mục "appointments".');
         });
     }
@@ -3302,18 +3311,13 @@
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 6px;">
                 <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
                   ${paymentBadge}
-                  ${badge}
                 </div>
                 <div style="display: flex; gap: 6px;">
                   ${debtVal > 0 ? `
                     <button class="btn-outline" style="padding: 4px 10px; font-size: 11px; border-color: var(--primary-gold); color: var(--primary-gold);" onclick="openPaymentQR('${customer.id}', '${s.id}', ${debtVal}, 'Thanh toan ${escapeJsAttr(s.service)} ${escapeJsAttr(customer.name)}')">
                       <i class="fa-solid fa-qrcode"></i> Thanh toán
                     </button>
-                  ` : `
-                    <button class="btn-outline" style="padding: 4px 10px; font-size: 11px; opacity: 0.5; cursor: not-allowed; border-color: var(--success); color: var(--success);" disabled title="Lượt này đã trả đủ">
-                      <i class="fa-solid fa-circle-check"></i> Đã trả đủ
-                    </button>
-                  `}
+                  ` : ''}
                   <button class="btn-outline" style="padding: 4px 10px; font-size: 11px;" onclick="openEditFullCustomerModal('${customer.id}', '${s.id}')">
                     <i class="fa-solid fa-pen-to-square"></i> Sửa
                   </button>
@@ -3329,7 +3333,7 @@
               <!-- Chi tiết thông số kỹ thuật dịch vụ -->
               <div style="font-size: 12.5px; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px;">
                 <div><span style="color: var(--text-muted);">Thời gian làm:</span> <strong style="color: #fff;">${formatDateTimeDisplay(s.date)}</strong></div>
-                <div><span style="color: var(--text-muted);">Hạn bảo hành:</span> <strong style="color: var(--primary-gold);">${w.expiryDateStr}</strong></div>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;"><span style="color: var(--text-muted);">Hạn bảo hành:</span> <strong style="color: var(--primary-gold);">${w.expiryDateStr}</strong> ${badge}</div>
                 <div><span style="color: var(--text-muted);">Tình trạng:</span> <span style="color: var(--text-main);">${displayPreStatus}</span></div>
                 <div><span style="color: var(--text-muted);">Giải pháp:</span> <span style="color: var(--text-main);">${displayProcess}</span></div>
                 <div><span style="color: var(--text-muted);">Màu đã pha:</span> <span style="color: var(--text-main);">${displayColorMix}</span></div>
@@ -3722,6 +3726,11 @@
       await initDB();
       initFirebase();
       showAutoWarrantyReminderPopup();
+
+      // Đăng ký service worker để app mở được kể cả khi mất mạng tạm thời
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').catch(err => console.error('Lỗi đăng ký service worker:', err));
+      }
     };
   </script>
 </body>
