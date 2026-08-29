@@ -2145,6 +2145,21 @@
       document.getElementById('remindModal').style.display = 'block';
     }
 
+    // Gửi tin nhắn nhanh (chăm sóc chung) cho khách hàng - dùng ở tab Khách hàng
+    function openQuickMessageModal(custId) {
+      const customer = db.customers.find(c => c.id === custId);
+      if (!customer) return;
+
+      const msg = `Xin chào ${customer.name}, ${db.brand.title || 'Ngọc Ánh'} xin cảm ơn quý khách đã tin tưởng sử dụng dịch vụ. Nếu cần hỗ trợ hoặc tư vấn thêm, quý khách vui lòng liên hệ tiệm nhé!`;
+
+      currentRemindPhone = customer.phone ? customer.phone.replace(/\D/g, '') : '';
+
+      document.getElementById('remindCustName').innerText = customer.name;
+      document.getElementById('remindCustPhone').innerText = customer.phone || 'Chưa có SĐT';
+      document.getElementById('remindMessageBody').value = msg;
+      document.getElementById('remindModal').style.display = 'block';
+    }
+
     function renderAppointmentList() {
       const q = (document.getElementById('appointmentSearchInput').value || '').toLowerCase().trim();
       const container = document.getElementById('appointmentList');
@@ -2611,15 +2626,19 @@
               </div>
             </div>
             ${!customerSelectMode ? `
-            <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
-              <div style="display: flex; gap: 6px;">
-                <button class="btn-outline" title="Chỉnh sửa toàn bộ hồ sơ khách hàng" onpointerdown="event.stopPropagation();" onclick="event.stopPropagation(); openEditFullCustomerModal('${c.id}')">
-                  <i class="fa-solid fa-pen"></i> Sửa
-                </button>
-                <button class="btn-outline" style="border-color: var(--danger); color: var(--danger);" title="Xóa khách hàng này" onpointerdown="event.stopPropagation();" onclick="event.stopPropagation(); deleteCustomer('${c.id}')">
-                  <i class="fa-solid fa-trash"></i> Xóa
-                </button>
-              </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 128px; flex-shrink: 0;">
+              <button class="btn-outline" style="padding: 6px 8px; font-size: 12px;" title="Chỉnh sửa toàn bộ hồ sơ khách hàng" onpointerdown="event.stopPropagation();" onclick="event.stopPropagation(); openEditFullCustomerModal('${c.id}')">
+                <i class="fa-solid fa-pen"></i> Sửa
+              </button>
+              <a class="btn-call" href="tel:${escapeHtml(c.phone)}" title="Gọi điện cho khách hàng" onpointerdown="event.stopPropagation();" onclick="event.stopPropagation();">
+                <i class="fa-solid fa-phone"></i>
+              </a>
+              <button class="btn-outline" style="padding: 6px 8px; font-size: 12px; border-color: var(--danger); color: var(--danger);" title="Xóa khách hàng này" onpointerdown="event.stopPropagation();" onclick="event.stopPropagation(); deleteCustomer('${c.id}')">
+                <i class="fa-solid fa-trash"></i> Xóa
+              </button>
+              <button class="btn-remind" title="Gửi tin nhắn (Zalo/SMS)" onpointerdown="event.stopPropagation();" onclick="event.stopPropagation(); openQuickMessageModal('${c.id}')">
+                <i class="fa-solid fa-comment-dots"></i>
+              </button>
             </div>` : ''}
           </div>
         `;
