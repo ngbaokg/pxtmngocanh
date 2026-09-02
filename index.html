@@ -1200,11 +1200,12 @@
         <textarea id="settingMsgTemplate" class="form-control" style="height: 90px; font-size: 13px;"></textarea>
       </div>
       <div class="form-group">
+        <label>Mật khẩu hiện tại</label>
+        <input type="password" id="settingOldPasscode" class="form-control" placeholder="Nhập mật khẩu hiện tại để đổi mật khẩu...">
+      </div>
+      <div class="form-group">
         <label>Đổi mật mã doanh thu (Bỏ trống nếu không đổi)</label>
         <input type="password" id="settingPasscode" class="form-control" placeholder="Nhập mật khẩu mới...">
-        <div style="font-size: 11px; color: var(--text-muted); margin-top: 5px; line-height: 1.5;">
-          <i class="fa-solid fa-circle-info"></i> Lưu ý: mật mã này chỉ để che tạm màn hình doanh thu khỏi người nhìn thoáng qua, không mã hoá dữ liệu. Không dùng để bảo vệ dữ liệu nhạy cảm thật sự.
-        </div>
       </div>
 
       <!-- Khu vực cấu hình thông tin nhận tiền (VietQR) -->
@@ -3982,6 +3983,7 @@
       document.getElementById('settingLogoPreview').src = db.brand.logo || defaultBrandLogo;
       document.getElementById('settingMsgTemplate').value = db.brand.msgTemplate || defaultReminderTemplate;
       document.getElementById('settingPasscode').value = '';
+      document.getElementById('settingOldPasscode').value = '';
       document.getElementById('settingBankId').value = db.brand.bankId || '970436';
       document.getElementById('settingBankAccountNo').value = db.brand.bankAccountNo || '';
       document.getElementById('settingBankAccountName').value = db.brand.bankAccountName || '';
@@ -3990,6 +3992,21 @@
     }
 
     async function saveBrandSettings() {
+      // Nếu người dùng muốn đổi mật mã doanh thu, bắt buộc nhập đúng mật khẩu hiện tại trước
+      let newPass = document.getElementById('settingPasscode').value;
+      if (newPass) {
+        let oldPass = document.getElementById('settingOldPasscode').value;
+        let currentPass = (db.brand && db.brand.passcode) ? db.brand.passcode : '123456';
+        if (!oldPass) {
+          showAppAlert('Vui lòng nhập mật khẩu hiện tại để đổi mật khẩu mới!');
+          return;
+        }
+        if (oldPass !== currentPass) {
+          showAppAlert('Mật khẩu hiện tại không đúng. Vui lòng thử lại!');
+          return;
+        }
+      }
+
       db.brand.title = document.getElementById('settingTitle').value || db.brand.title;
       db.brand.slogan = document.getElementById('settingSlogan').value || db.brand.slogan;
       let logoInput = document.getElementById('settingLogo').value.trim();
@@ -3999,7 +4016,6 @@
       db.brand.bankAccountNo = document.getElementById('settingBankAccountNo').value.trim();
       db.brand.bankAccountName = document.getElementById('settingBankAccountName').value.trim();
 
-      let newPass = document.getElementById('settingPasscode').value;
       if (newPass) db.brand.passcode = newPass;
 
       await saveDB();
