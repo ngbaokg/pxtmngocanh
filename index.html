@@ -394,6 +394,10 @@
       overflow-y: auto;
       padding: 20px 12px;
     }
+    /* Bảng thông báo / xác nhận luôn phải nổi lên trên các modal khác (vd: đang mở Cài đặt) */
+    #customAlertModal, #customConfirmModal {
+      z-index: 3000;
+    }
     .modal-content {
       background: var(--bg-card);
       max-width: 560px;
