@@ -4083,7 +4083,9 @@
       await saveDB();
       syncBrandToCloud();
       renderHome();
-      closeModal('settingsModal');
+      // Xoá ô mật khẩu sau khi lưu thành công, không đóng modal để tiếp tục chỉnh các tab khác
+      document.getElementById('settingPasscode').value = '';
+      document.getElementById('settingOldPasscode').value = '';
       showAppAlert('Đã cập nhật cài đặt thành công!');
     }
 
