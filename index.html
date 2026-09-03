@@ -430,6 +430,39 @@
       border-color: var(--primary-gold);
     }
 
+    /* Tabs bên trong modal Cài đặt */
+    .settings-tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0;
+    }
+    .settings-tabs::-webkit-scrollbar { display: none; }
+    .settings-tab {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 12px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .settings-tab:hover { color: var(--text-main); }
+    .settings-tab.active {
+      color: var(--primary-gold);
+      border-bottom-color: var(--primary-gold);
+    }
+    .settings-tab-content { display: none; }
+    .settings-tab-content.active { display: block; }
+
     /* Badges */
     .badge {
       display: inline-flex;
@@ -1174,77 +1207,97 @@
         <h3 style="color: var(--primary-gold); font-size: 17px;"><i class="fa-solid fa-sliders"></i> Cài đặt & Sao lưu dữ liệu</h3>
         <div class="modal-close-btn" onclick="closeModal('settingsModal')"><i class="fa-solid fa-xmark"></i></div>
       </div>
-      
-      <div class="form-group">
-        <label>Tên cửa hàng</label>
-        <input type="text" id="settingTitle" class="form-control">
+
+      <div class="settings-tabs">
+        <div class="settings-tab active" data-tab="store" onclick="switchSettingsTab('store', this)"><i class="fa-solid fa-store"></i> Cửa hàng</div>
+        <div class="settings-tab" data-tab="security" onclick="switchSettingsTab('security', this)"><i class="fa-solid fa-lock"></i> Bảo mật</div>
+        <div class="settings-tab" data-tab="payment" onclick="switchSettingsTab('payment', this)"><i class="fa-solid fa-qrcode"></i> Thanh toán</div>
+        <div class="settings-tab" data-tab="sync" onclick="switchSettingsTab('sync', this)"><i class="fa-solid fa-cloud"></i> Đồng bộ & Sao lưu</div>
       </div>
-      <div class="form-group">
-        <label>Slogan chào mừng</label>
-        <input type="text" id="settingSlogan" class="form-control">
-      </div>
-      <div class="form-group">
-        <label>Logo cửa hàng</label>
-        <div style="display: flex; align-items: center; gap: 14px;">
-          <img id="settingLogoPreview" src="" alt="Logo" style="width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-gold); background: #111;">
-          <div style="display: flex; flex-direction: column; gap: 6px;">
-            <button type="button" class="btn-outline" style="padding: 7px 12px; font-size: 12px;" onclick="document.getElementById('settingLogoFileInput').click()"><i class="fa-solid fa-camera-retro"></i> Chụp / Tải ảnh logo</button>
-            <button type="button" class="btn-outline" style="padding: 7px 12px; font-size: 12px; border-color: var(--danger); color: var(--danger);" onclick="resetSettingLogoToDefault()"><i class="fa-solid fa-rotate-left"></i> Dùng logo mặc định</button>
+
+      <!-- TAB: Cấu hình cửa hàng -->
+      <div class="settings-tab-content active" id="settingsTab-store">
+        <div class="form-group">
+          <label>Tên cửa hàng</label>
+          <input type="text" id="settingTitle" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Slogan chào mừng</label>
+          <input type="text" id="settingSlogan" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Logo cửa hàng</label>
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <img id="settingLogoPreview" src="" alt="Logo" style="width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-gold); background: #111;">
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <button type="button" class="btn-outline" style="padding: 7px 12px; font-size: 12px;" onclick="document.getElementById('settingLogoFileInput').click()"><i class="fa-solid fa-camera-retro"></i> Chụp / Tải ảnh logo</button>
+              <button type="button" class="btn-outline" style="padding: 7px 12px; font-size: 12px; border-color: var(--danger); color: var(--danger);" onclick="resetSettingLogoToDefault()"><i class="fa-solid fa-rotate-left"></i> Dùng logo mặc định</button>
+            </div>
           </div>
+          <input type="file" id="settingLogoFileInput" accept="image/*" style="display: none;" onchange="handleLogoUpload(event)">
+          <input type="hidden" id="settingLogo">
         </div>
-        <input type="file" id="settingLogoFileInput" accept="image/*" style="display: none;" onchange="handleLogoUpload(event)">
-        <input type="hidden" id="settingLogo">
-      </div>
-      <div class="form-group">
-        <label>Mẫu tin nhắn nhắc bảo hành ({TEN_KH}, {DICH_VU}, {HAN_BH}, {TEN_TIEM})</label>
-        <textarea id="settingMsgTemplate" class="form-control" style="height: 90px; font-size: 13px;"></textarea>
-      </div>
-      <div class="form-group">
-        <label>Mật khẩu hiện tại</label>
-        <input type="password" id="settingOldPasscode" class="form-control" placeholder="Nhập mật khẩu hiện tại để đổi mật khẩu...">
-      </div>
-      <div class="form-group">
-        <label>Đổi mật mã doanh thu (Bỏ trống nếu không đổi)</label>
-        <input type="password" id="settingPasscode" class="form-control" placeholder="Nhập mật khẩu mới...">
+        <div class="form-group">
+          <label>Mẫu tin nhắn nhắc bảo hành ({TEN_KH}, {DICH_VU}, {HAN_BH}, {TEN_TIEM})</label>
+          <textarea id="settingMsgTemplate" class="form-control" style="height: 90px; font-size: 13px;"></textarea>
+        </div>
       </div>
 
-      <!-- Khu vực cấu hình thông tin nhận tiền (VietQR) -->
-      <div style="background: var(--bg-dark); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); margin: 15px 0;">
-        <label style="color: var(--primary-gold); font-weight: 600; margin-bottom: 8px; display: block;"><i class="fa-solid fa-qrcode"></i> Thông tin nhận thanh toán (VietQR)</label>
-        <div class="form-group" style="margin-bottom: 8px;">
-          <label style="font-size: 12px;">Ngân hàng</label>
-          <select id="settingBankId" class="form-control"></select>
+      <!-- TAB: Bảo mật -->
+      <div class="settings-tab-content" id="settingsTab-security">
+        <div class="form-group">
+          <label>Mật khẩu hiện tại</label>
+          <input type="password" id="settingOldPasscode" class="form-control" placeholder="Nhập mật khẩu hiện tại để đổi mật khẩu...">
         </div>
-        <div class="form-group" style="margin-bottom: 8px;">
-          <label style="font-size: 12px;">Số tài khoản</label>
-          <input type="text" id="settingBankAccountNo" class="form-control" placeholder="VD: 0123456789">
+        <div class="form-group">
+          <label>Đổi mật mã doanh thu (Bỏ trống nếu không đổi)</label>
+          <input type="password" id="settingPasscode" class="form-control" placeholder="Nhập mật khẩu mới...">
         </div>
-        <div class="form-group" style="margin-bottom: 0;">
-          <label style="font-size: 12px;">Tên chủ tài khoản (không dấu, in hoa)</label>
-          <input type="text" id="settingBankAccountName" class="form-control" placeholder="VD: NGUYEN NGOC ANH">
-        </div>
-        <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">Điền đúng 1 lần, sau đó bấm nút "Thanh toán" trong hồ sơ khách hàng sẽ tự tạo mã QR với đúng số tiền cần thu.</div>
       </div>
 
-      <!-- Khu vực đồng bộ đám mây (nhiều thiết bị) -->
-      <div id="cloudSettingsBox" style="background: var(--bg-dark); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); margin: 15px 0;">
-        <label style="color: var(--primary-gold); font-weight: 600; margin-bottom: 8px; display: block;"><i class="fa-solid fa-cloud"></i> Đồng bộ nhiều thiết bị</label>
-        <div id="cloudSettingsContent" style="font-size: 12px; color: var(--text-muted);">Đang kiểm tra cấu hình...</div>
+      <!-- TAB: Thanh toán -->
+      <div class="settings-tab-content" id="settingsTab-payment">
+        <!-- Khu vực cấu hình thông tin nhận tiền (VietQR) -->
+        <div style="background: var(--bg-dark); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+          <label style="color: var(--primary-gold); font-weight: 600; margin-bottom: 8px; display: block;"><i class="fa-solid fa-qrcode"></i> Thông tin nhận thanh toán (VietQR)</label>
+          <div class="form-group" style="margin-bottom: 8px;">
+            <label style="font-size: 12px;">Ngân hàng</label>
+            <select id="settingBankId" class="form-control"></select>
+          </div>
+          <div class="form-group" style="margin-bottom: 8px;">
+            <label style="font-size: 12px;">Số tài khoản</label>
+            <input type="text" id="settingBankAccountNo" class="form-control" placeholder="VD: 0123456789">
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label style="font-size: 12px;">Tên chủ tài khoản (không dấu, in hoa)</label>
+            <input type="text" id="settingBankAccountName" class="form-control" placeholder="VD: NGUYEN NGOC ANH">
+          </div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">Điền đúng 1 lần, sau đó bấm nút "Thanh toán" trong hồ sơ khách hàng sẽ tự tạo mã QR với đúng số tiền cần thu.</div>
+        </div>
       </div>
 
-      <!-- Khu vực sao lưu / phục hồi file dữ liệu -->
-      <div style="background: var(--bg-dark); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); margin: 15px 0;">
-        <label style="color: var(--primary-gold); font-weight: 600; margin-bottom: 8px; display: block;"><i class="fa-solid fa-cloud-arrow-down"></i> Sao lưu & Phục hồi bộ nhớ</label>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-          <button type="button" class="btn-outline" style="justify-content: center; padding: 8px;" onclick="exportDataFile()"><i class="fa-solid fa-download"></i> Tải file sao lưu</button>
-          <button type="button" class="btn-outline" style="justify-content: center; padding: 8px;" onclick="document.getElementById('importFileInput').click()"><i class="fa-solid fa-upload"></i> Nhập file dữ liệu</button>
+      <!-- TAB: Đồng bộ & Sao lưu -->
+      <div class="settings-tab-content" id="settingsTab-sync">
+        <!-- Khu vực đồng bộ đám mây (nhiều thiết bị) -->
+        <div id="cloudSettingsBox" style="background: var(--bg-dark); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+          <label style="color: var(--primary-gold); font-weight: 600; margin-bottom: 8px; display: block;"><i class="fa-solid fa-cloud"></i> Đồng bộ nhiều thiết bị</label>
+          <div id="cloudSettingsContent" style="font-size: 12px; color: var(--text-muted);">Đang kiểm tra cấu hình...</div>
         </div>
-        <input type="file" id="importFileInput" accept=".json" style="display: none;" onchange="importDataFile(event)">
 
-        <div style="margin-top: 12px; border-top: 1px dashed var(--border-color); padding-top: 10px;">
-          <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">Nếu nút "Nhập file dữ liệu" không phản hồi trên điện thoại: mở file sao lưu (.json) bằng ứng dụng ghi chú/trình soạn thảo bất kỳ, copy toàn bộ nội dung, rồi dán vào ô bên dưới.</div>
-          <textarea id="importPasteText" class="form-control" rows="3" placeholder="Dán nội dung file sao lưu (.json) vào đây..."></textarea>
-          <button type="button" class="btn-outline" style="width: 100%; justify-content: center; padding: 8px; margin-top: 6px;" onclick="importDataFromPaste()"><i class="fa-solid fa-paste"></i> Phục hồi từ nội dung đã dán</button>
+        <!-- Khu vực sao lưu / phục hồi file dữ liệu -->
+        <div style="background: var(--bg-dark); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); margin-top: 15px;">
+          <label style="color: var(--primary-gold); font-weight: 600; margin-bottom: 8px; display: block;"><i class="fa-solid fa-cloud-arrow-down"></i> Sao lưu & Phục hồi bộ nhớ</label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <button type="button" class="btn-outline" style="justify-content: center; padding: 8px;" onclick="exportDataFile()"><i class="fa-solid fa-download"></i> Tải file sao lưu</button>
+            <button type="button" class="btn-outline" style="justify-content: center; padding: 8px;" onclick="document.getElementById('importFileInput').click()"><i class="fa-solid fa-upload"></i> Nhập file dữ liệu</button>
+          </div>
+          <input type="file" id="importFileInput" accept=".json" style="display: none;" onchange="importDataFile(event)">
+
+          <div style="margin-top: 12px; border-top: 1px dashed var(--border-color); padding-top: 10px;">
+            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">Nếu nút "Nhập file dữ liệu" không phản hồi trên điện thoại: mở file sao lưu (.json) bằng ứng dụng ghi chú/trình soạn thảo bất kỳ, copy toàn bộ nội dung, rồi dán vào ô bên dưới.</div>
+            <textarea id="importPasteText" class="form-control" rows="3" placeholder="Dán nội dung file sao lưu (.json) vào đây..."></textarea>
+            <button type="button" class="btn-outline" style="width: 100%; justify-content: center; padding: 8px; margin-top: 6px;" onclick="importDataFromPaste()"><i class="fa-solid fa-paste"></i> Phục hồi từ nội dung đã dán</button>
+          </div>
         </div>
       </div>
 
@@ -3975,7 +4028,16 @@
       showAppAlert('Đã ghi nhận thanh toán ' + formatMoney(receivedAmount) + '.');
     }
 
+    function switchSettingsTab(tabName, el) {
+      document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.settings-tab-content').forEach(c => c.classList.remove('active'));
+      if (el) el.classList.add('active');
+      const content = document.getElementById('settingsTab-' + tabName);
+      if (content) content.classList.add('active');
+    }
+
     function openSettingsModal() {
+      switchSettingsTab('store', document.querySelector('.settings-tab[data-tab="store"]'));
       renderBankOptions();
       document.getElementById('settingTitle').value = db.brand.title;
       document.getElementById('settingSlogan').value = db.brand.slogan;
