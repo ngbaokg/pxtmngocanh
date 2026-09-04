@@ -18,10 +18,12 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Thư viện IndexedDB dung lượng lớn (lưu cục bộ trên máy) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
-  <!-- Firebase: dùng để đăng nhập và đồng bộ dữ liệu qua nhiều thiết bị (xem hướng dẫn cấu hình trong file JS bên dưới) -->
+  <!-- Firebase: dùng để đăng nhập và đồng bộ dữ liệu qua nhiều thiết bị -->
   <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+  <!-- Google Identity Services (GIS) cho Google Calendar OAuth2 -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     :root {
       --primary-gold: #c5a059;
@@ -233,7 +235,6 @@
     }
     .form-control:focus { outline: none; border-color: var(--primary-gold); }
 
-    /* Tự động ngắt chữ và chỉnh dòng cho textarea */
     textarea.form-control {
       resize: vertical;
       line-height: 1.5;
@@ -394,7 +395,6 @@
       overflow-y: auto;
       padding: 20px 12px;
     }
-    /* Bảng thông báo / xác nhận luôn phải nổi lên trên các modal khác (vd: đang mở Cài đặt) */
     #customAlertModal, #customConfirmModal {
       z-index: 3000;
     }
@@ -674,14 +674,9 @@
     #ivNextArrow { right: 6px; }
     #imageViewerDots { margin-top: 10px; text-align: center; }
 
-    /* ============================================================
-       GIAO DIỆN CHO MÀN HÌNH MÁY TÍNH (không ảnh hưởng điện thoại)
-       ============================================================ */
     @media (min-width: 900px) {
       .container { max-width: 1100px; padding: 26px 24px; }
       header { padding: 16px 26px; }
-
-      /* Thanh điều hướng: thu gọn theo khung nội dung, bo góc nổi lên như thanh công cụ */
       .bottom-nav {
         max-width: 1100px;
         left: 50%;
@@ -694,7 +689,6 @@
       .nav-item { padding: 4px 12px; border-radius: 10px; transition: background 0.15s; }
       .nav-item:hover { background: rgba(255, 255, 255, 0.05); }
 
-      /* Danh sách khách hàng & Trang chủ: dùng lưới 2 cột cho đỡ trống trải */
       #customerList, #homeRecentList {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -703,7 +697,6 @@
       }
       #customerList .card, #homeRecentList > .card { margin-bottom: 0; }
 
-      /* Danh sách bảo hành: cũng chia lưới, mỗi khách 1 khối riêng */
       #warrantyList {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -771,8 +764,7 @@
       <div id="customerList"></div>
     </div>
 
-    <!-- 3. TAB BẢO HÀNH -->
-    <!-- TAB LỊCH HẸN -->
+    <!-- 3. TAB LỊCH HẸN & BẢO HÀNH -->
     <div id="tab-appointments" class="tab-content">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
         <h3 style="font-size: 16px; color: var(--primary-gold);"><i class="fa-solid fa-calendar-check"></i> Lịch hẹn khách</h3>
@@ -786,7 +778,6 @@
 
     <div id="tab-warranty" class="tab-content">
       <h3 style="font-size: 16px; color: var(--primary-gold); margin-bottom: 12px;"><i class="fa-solid fa-shield-halved"></i> Danh sách bảo hành & Nhắc lịch</h3>
-      
       <div class="form-group">
         <input type="text" id="warrantySearchInput" class="form-control" placeholder="Tìm theo Tên, SĐT, Địa chỉ, Dịch vụ..." oninput="renderWarrantyList()">
       </div>
@@ -962,7 +953,7 @@
         <input type="text" id="custPrice" class="form-control" placeholder="2.500.000" oninput="handlePriceOrPaidChange()">
       </div>
 
-      <!-- KHU VỰC QUẢN LÝ CÔNG NỢ ĐƯỢC BỔ SUNG -->
+      <!-- KHU VỰC QUẢN LÝ CÔNG NỢ -->
       <div class="debt-panel">
         <label style="font-size: 13px; font-weight: 700; color: var(--primary-gold); display: block; margin-bottom: 10px;"><i class="fa-solid fa-receipt"></i> Thanh toán & Công nợ</label>
 
@@ -1079,7 +1070,7 @@
     </div>
   </div>
 
-  <!-- MODAL: GỬI TIN NHẮN NHẮC BẢO HÀNH (GIỮ LẠI CHO TAB BẢO HÀNH) -->
+  <!-- MODAL: GỬI TIN NHẮN NHẮC BẢO HÀNH -->
   <div id="remindModal" class="modal">
     <div class="modal-content">
       <div class="modal-header-top">
@@ -1111,7 +1102,7 @@
     </div>
   </div>
 
-  <!-- MODAL: THÔNG BÁO (thay cho alert() gốc của trình duyệt) -->
+  <!-- MODAL: THÔNG BÁO -->
   <div id="customAlertModal" class="modal">
     <div class="modal-content" style="max-width: 360px; text-align: center;">
       <div style="font-size: 32px; color: var(--primary-gold); margin-bottom: 10px;"><i class="fa-solid fa-circle-info"></i></div>
@@ -1120,7 +1111,7 @@
     </div>
   </div>
 
-  <!-- MODAL: XÁC NHẬN (thay cho confirm() gốc của trình duyệt) -->
+  <!-- MODAL: XÁC NHẬN -->
   <div id="customConfirmModal" class="modal">
     <div class="modal-content" style="max-width: 360px; text-align: center;">
       <div style="font-size: 32px; color: var(--warning); margin-bottom: 10px;"><i class="fa-solid fa-triangle-exclamation"></i></div>
@@ -1132,7 +1123,7 @@
     </div>
   </div>
 
-  <!-- MODAL XEM ẢNH PHÓNG TO (LIGHTBOX) - hỗ trợ zoom 2 ngón & vuốt chuyển ảnh -->
+  <!-- MODAL XEM ẢNH PHÓNG TO (LIGHTBOX) -->
   <div id="imageViewerModal" onclick="closeImageViewer()">
     <div style="width: 100%; max-width: 700px; text-align: right; margin-bottom: 8px;">
       <span onclick="event.stopPropagation(); closeImageViewer()" style="color: #fff; font-size: 24px; cursor: pointer; padding: 5px 12px; background: rgba(255,255,255,0.15); border-radius: 50%;"><i class="fa-solid fa-xmark"></i></span>
@@ -1146,7 +1137,7 @@
     <div id="imageViewerCaption" style="color: var(--primary-gold); margin-top: 10px; font-weight: 600; font-size: 14px;"></div>
   </div>
 
-  <!-- MODAL: NHẮC VIỆC HÀNG NGÀY (LỊCH HẸN + BẢO HÀNH) -->
+  <!-- MODAL: NHẮC VIỆC HÀNG NGÀY -->
   <div id="autoWarrantyReminderModal" class="modal">
     <div class="modal-content" style="max-width: 420px;">
       <div class="modal-header-top">
@@ -1175,7 +1166,7 @@
     </div>
   </div>
 
-  <!-- MODAL: ĐĂNG NHẬP TÀI KHOẢN ĐỒNG BỘ (CLOUD) -->
+  <!-- MODAL: ĐĂNG NHẬP TÀI KHOẢN ĐỒNG BỘ (FIREBASE) -->
   <div id="cloudLoginModal" class="modal">
     <div class="modal-content">
       <div class="modal-header-top">
@@ -1261,7 +1252,6 @@
 
       <!-- TAB: Thanh toán -->
       <div class="settings-tab-content" id="settingsTab-payment">
-        <!-- Khu vực cấu hình thông tin nhận tiền (VietQR) -->
         <div style="background: var(--bg-dark); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
           <label style="color: var(--primary-gold); font-weight: 600; margin-bottom: 8px; display: block;"><i class="fa-solid fa-qrcode"></i> Thông tin nhận thanh toán (VietQR)</label>
           <div class="form-group" style="margin-bottom: 8px;">
@@ -1286,6 +1276,16 @@
         <div id="cloudSettingsBox" style="background: var(--bg-dark); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
           <label style="color: var(--primary-gold); font-weight: 600; margin-bottom: 8px; display: block;"><i class="fa-solid fa-cloud"></i> Đồng bộ nhiều thiết bị</label>
           <div id="cloudSettingsContent" style="font-size: 12px; color: var(--text-muted);">Đang kiểm tra cấu hình...</div>
+        </div>
+
+        <!-- KHU VỰC LIÊN KẾT GOOGLE CALENDAR -->
+        <div id="googleCalendarBox" style="background: var(--bg-dark); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); margin-top: 15px;">
+          <label style="color: var(--primary-gold); font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+            <i class="fa-regular fa-calendar-days" style="color: var(--primary-gold);"></i> Đồng bộ Google Calendar
+          </label>
+          <div id="gcalStatusContent" style="font-size: 12px; color: var(--text-muted); line-height: 1.6;">
+            Đang tải dữ liệu Google Calendar...
+          </div>
         </div>
 
         <!-- Khu vực sao lưu / phục hồi file dữ liệu -->
@@ -1345,58 +1345,99 @@
     });
 
     /* ============================================================================
-       ĐỒNG BỘ NHIỀU THIẾT BỊ VỚI FIREBASE (TUỲ CHỌN)
-       ============================================================================
-       App vẫn hoạt động BÌNH THƯỜNG ở chế độ chỉ-lưu-máy-này nếu bạn không cấu hình
-       phần này. Muốn bật đồng bộ nhiều thiết bị (điện thoại + máy tính, nhiều nhân
-       viên...), làm theo các bước sau (miễn phí với quy mô 1 tiệm nhỏ):
+       GOOGLE CALENDAR OAUTH (GOOGLE IDENTITY SERVICES)
+       ============================================================================ */
+    const GCAL_CLIENT_ID = "716343551019-gvshb80eamtcpap1gsvji2lbsmiohhkm.apps.googleusercontent.com";
+    const GCAL_SCOPES = "https://www.googleapis.com/auth/calendar.events";
 
-       BƯỚC 1: Vào https://console.firebase.google.com → "Add project" → đặt tên
-               bất kỳ (vd: ngoc-anh-pmu) → tạo project (có thể tắt Google Analytics).
+    let gcalTokenClient = null;
+    let gcalAccessToken = localStorage.getItem('gcal_access_token') || null;
 
-       BƯỚC 2: Trong project vừa tạo, vào mục "Build" → "Authentication" →
-               "Get started" → chọn "Email/Password" → bật (Enable) → Save.
-
-       BƯỚC 3: Vào "Build" → "Firestore Database" → "Create database" → chọn chế độ
-               "Start in production mode" → chọn khu vực gần VN (vd: asia-southeast1)
-               → Create.
-
-       BƯỚC 4: Vào tab "Rules" của Firestore, XOÁ hết nội dung mặc định và dán đúng
-               đoạn quy tắc bảo mật sau (chỉ chủ tài khoản mới đọc/ghi được dữ liệu
-               của chính mình), rồi bấm "Publish":
-
-          rules_version = '2';
-          service cloud.firestore {
-            match /databases/{database}/documents {
-              match /users/{uid} {
-                allow read, write: if request.auth != null && request.auth.uid == uid;
-              }
-              match /users/{uid}/customers/{customerId} {
-                allow read, write: if request.auth != null && request.auth.uid == uid;
-              }
-              match /users/{uid}/appointments/{apptId} {
-                allow read, write: if request.auth != null && request.auth.uid == uid;
-              }
+    function initGoogleCalendarClient() {
+      if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+        return;
+      }
+      try {
+        gcalTokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: GCAL_CLIENT_ID,
+          scope: GCAL_SCOPES,
+          callback: (tokenResponse) => {
+            if (tokenResponse && tokenResponse.access_token) {
+              gcalAccessToken = tokenResponse.access_token;
+              localStorage.setItem('gcal_access_token', gcalAccessToken);
+              localStorage.setItem('gcal_connected', 'true');
+              renderGoogleCalendarBox();
+              showAppAlert("Kết nối Google Calendar thành công! Các lịch hẹn giờ đây có thể đồng bộ với Google Calendar.");
             }
-          }
+          },
+        });
+      } catch (err) {
+        console.error("Lỗi khởi tạo Google Calendar Client:", err);
+      }
+    }
 
-       BƯỚC 5: Vào biểu tượng bánh răng ⚙ (Project settings) → cuộn xuống mục
-               "Your apps" → bấm biểu tượng </> (Web) → đặt tên bất kỳ → Register app.
-               Firebase sẽ hiện ra một đoạn config dạng:
-                 const firebaseConfig = { apiKey: "...", authDomain: "...", ... };
-               Copy đúng các giá trị đó, dán thay thế vào object firebaseConfig ngay
-               bên dưới đây (giữ nguyên tên các khoá, chỉ thay giá trị).
+    function renderGoogleCalendarBox() {
+      const el = document.getElementById('gcalStatusContent');
+      if (!el) return;
 
-       BƯỚC 6: Lưu file, mở lại app → vào Cài đặt → mục "Đồng bộ nhiều thiết bị" →
-               bấm "Tạo tài khoản mới" (chỉ làm 1 lần đầu) → đăng nhập bằng cùng
-               email/mật khẩu đó trên các thiết bị khác là xong.
+      const isConnected = localStorage.getItem('gcal_connected') === 'true';
 
-       Lưu ý: mỗi khách hàng được lưu thành 1 tài liệu riêng trên Firestore để tránh
-       vượt giới hạn dung lượng (1MB/tài liệu) của Firestore khi có nhiều ảnh. Nếu
-       một khách có QUÁ NHIỀU lượt làm kèm ảnh khiến vượt giới hạn, app sẽ báo và
-       vẫn lưu được ở máy hiện tại, chỉ tạm thời không đồng bộ hồ sơ đó lên mây.
-    ============================================================================ */
+      if (isConnected) {
+        el.innerHTML = `
+          <div style="margin-bottom: 8px; color: var(--success); display: flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-circle-check"></i> <strong>Đã liên kết Google Calendar</strong>
+          </div>
+          <div style="font-size: 11.5px; margin-bottom: 10px; color: var(--text-muted);">
+            Tài khoản đã sẵn sàng đồng bộ lịch hẹn khách hàng với Google Calendar trên điện thoại và máy tính.
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn-outline" style="padding: 7px 12px; font-size: 11px;" onclick="connectGoogleCalendar()">
+              <i class="fa-solid fa-rotate"></i> Cấp lại quyền / Đổi tài khoản
+            </button>
+            <button type="button" class="btn-danger-outline" style="padding: 7px 12px; font-size: 11px;" onclick="disconnectGoogleCalendar()">
+              <i class="fa-solid fa-link-slash"></i> Ngắt kết nối
+            </button>
+          </div>
+        `;
+      } else {
+        el.innerHTML = `
+          <div style="margin-bottom: 10px;">
+            Chưa kết nối Google Calendar. Kết nối để tự động đưa lịch hẹn của tiệm lên lịch Google và chuông báo nhắc việc trên điện thoại.
+          </div>
+          <button type="button" class="btn-gold" style="padding: 10px; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; width: auto;" onclick="connectGoogleCalendar()">
+            <i class="fa-brands fa-google"></i> Đăng nhập Google Calendar
+          </button>
+        `;
+      }
+    }
 
+    function connectGoogleCalendar() {
+      if (!gcalTokenClient) {
+        initGoogleCalendarClient();
+      }
+      if (gcalTokenClient) {
+        gcalTokenClient.requestAccessToken({ prompt: 'consent' });
+      } else {
+        showAppAlert("Thư viện Google đang tải hoặc chưa sẵn sàng. Vui lòng kiểm tra kết nối mạng rồi thử lại.");
+      }
+    }
+
+    function disconnectGoogleCalendar() {
+      if (gcalAccessToken && typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
+        google.accounts.oauth2.revoke(gcalAccessToken, () => {
+          console.log('Google Access Token Revoked');
+        });
+      }
+      gcalAccessToken = null;
+      localStorage.removeItem('gcal_access_token');
+      localStorage.removeItem('gcal_connected');
+      renderGoogleCalendarBox();
+      showAppAlert("Đã ngắt kết nối với Google Calendar.");
+    }
+
+    /* ============================================================================
+       ĐỒNG BỘ NHIỀU THIẾT BỊ VỚI FIREBASE
+       ============================================================================ */
     const firebaseConfig = {
       apiKey: "AIzaSyBfqd2mahd5MvZX4c2Ab5M5xD_cX16OF8w",
       authDomain: "phunxamthammy-pmu.firebaseapp.com",
@@ -1461,7 +1502,6 @@
       if (!isCloudConfigured()) {
         el.innerHTML = `
           Chưa cấu hình đồng bộ nhiều thiết bị. Dữ liệu hiện chỉ lưu trên máy này.
-          Xem hướng dẫn cấu hình Firebase trong phần đầu file mã nguồn (thẻ &lt;script&gt;).
         `;
         return;
       }
@@ -1492,7 +1532,7 @@
       document.getElementById('cloudLoginError').style.display = 'none';
       document.getElementById('cloudRetryBox').style.display = 'none';
       if (typeof firebase === 'undefined') {
-        cloudShowError('Vẫn chưa tải được thư viện đồng bộ. Hãy kiểm tra kết nối mạng, sau đó đóng hẳn app rồi mở lại (thử kết nối lại không đủ nếu thư viện chưa tải được ngay từ đầu).');
+        cloudShowError('Vẫn chưa tải được thư viện đồng bộ. Hãy kiểm tra kết nối mạng, sau đó đóng hẳn app rồi mở lại.');
         document.getElementById('cloudRetryBox').style.display = 'block';
         return;
       }
@@ -1507,7 +1547,7 @@
     function cloudSignUp() {
       document.getElementById('cloudLoginError').style.display = 'none';
       if (!cloudAuth) {
-        cloudShowError('Chưa kết nối được máy chủ đồng bộ. Kiểm tra điện thoại/máy tính đang có mạng Internet rồi đóng app, mở lại và thử tiếp.');
+        cloudShowError('Chưa kết nối được máy chủ đồng bộ. Kiểm tra mạng rồi thử lại.');
         document.getElementById('cloudRetryBox').style.display = 'block';
         return;
       }
@@ -1519,7 +1559,6 @@
       }
       cloudAuth.createUserWithEmailAndPassword(email, pass)
         .then(function() {
-          // Sau khi tạo tài khoản lần đầu, tự động đẩy toàn bộ dữ liệu đang có trên máy lên mây
           setTimeout(cloudPushAllToCloud, 800);
         })
         .catch(function(err) { cloudShowError('Lỗi: ' + err.message); });
@@ -1528,7 +1567,7 @@
     function cloudSignIn() {
       document.getElementById('cloudLoginError').style.display = 'none';
       if (!cloudAuth) {
-        cloudShowError('Chưa kết nối được máy chủ đồng bộ. Kiểm tra điện thoại/máy tính đang có mạng Internet rồi đóng app, mở lại và thử tiếp.');
+        cloudShowError('Chưa kết nối được máy chủ đồng bộ. Kiểm tra mạng rồi thử lại.');
         document.getElementById('cloudRetryBox').style.display = 'block';
         return;
       }
@@ -1548,7 +1587,6 @@
       closeModal('settingsModal');
     }
 
-    // Lắng nghe thay đổi từ Firestore theo thời gian thực (nhiều thiết bị cùng cập nhật)
     function startCloudSync() {
       if (!cloudFirestore || !cloudUser) return;
       stopCloudSync();
@@ -1639,7 +1677,6 @@
       if (cloudUnsubBrand) { cloudUnsubBrand(); cloudUnsubBrand = null; }
     }
 
-    // Lưu local KHÔNG kích hoạt đẩy lại lên cloud (tránh vòng lặp khi vừa nhận dữ liệu từ cloud về)
     async function saveDBLocalOnly() {
       try {
         await localforage.setItem('na_pmu_db', db);
@@ -1648,10 +1685,8 @@
       }
     }
 
-    // Giới hạn an toàn dưới ngưỡng 1MB thật của Firestore, để còn dư chỗ cho các trường khác
     const FIRESTORE_DOC_SAFE_LIMIT = 900000;
 
-    // Phân biệt lỗi do MẤT MẠNG (bình thường, không cần báo ồn ào) với lỗi cấu hình/quyền thật sự
     function isOfflineFirestoreError(err) {
       if (!navigator.onLine) return true;
       if (!err) return false;
@@ -1666,7 +1701,7 @@
       customer.updatedAt = Date.now();
       const size = JSON.stringify(customer).length;
       if (size > FIRESTORE_DOC_SAFE_LIMIT) {
-        showAppAlert('Hồ sơ khách "' + customer.name + '" có quá nhiều ảnh/dữ liệu để đồng bộ lên mây (vẫn được lưu an toàn trên máy này). Hãy xoá bớt ảnh cũ ở các lượt làm lâu rồi nếu muốn đồng bộ đầy đủ.');
+        showAppAlert('Hồ sơ khách "' + customer.name + '" có quá nhiều ảnh/dữ liệu để đồng bộ lên mây.');
         return;
       }
 
@@ -1674,8 +1709,8 @@
         .set(customer)
         .catch(function(err) {
           console.error('Lỗi đồng bộ khách hàng lên mây:', err);
-          if (isOfflineFirestoreError(err)) return; // Mất mạng: dữ liệu đã lưu máy, sẽ tự đồng bộ khi có mạng lại
-          showAppAlert('Không thể đồng bộ hồ sơ khách hàng lên mây (đã lưu trên máy này). Kiểm tra kết nối mạng và thử lại sau.');
+          if (isOfflineFirestoreError(err)) return;
+          showAppAlert('Không thể đồng bộ hồ sơ khách hàng lên mây (đã lưu trên máy này).');
         });
     }
 
@@ -1696,8 +1731,8 @@
         .set(appt)
         .catch(function(err) {
           console.error('Lỗi đồng bộ lịch hẹn lên mây:', err);
-          if (isOfflineFirestoreError(err)) return; // Mất mạng: dữ liệu đã lưu máy, sẽ tự đồng bộ khi có mạng lại
-          showAppAlert('Không thể đồng bộ lịch hẹn lên mây (đã lưu trên máy này). Lỗi: ' + (err && err.message ? err.message : err) + '\n\nNếu lỗi ghi "Missing or insufficient permissions", bạn cần cập nhật lại Firestore Rules trong Firebase Console để thêm quyền cho mục "appointments".');
+          if (isOfflineFirestoreError(err)) return;
+          showAppAlert('Không thể đồng bộ lịch hẹn lên mây.');
         });
     }
 
@@ -1711,12 +1746,11 @@
     function syncBrandToCloud() {
       if (!cloudFirestore || !cloudUser) return;
       db.brand.updatedAt = Date.now();
-      // Không đồng bộ mật mã doanh thu lên mây để tránh lộ qua kênh khác - mỗi thiết bị tự đặt mật mã riêng nếu cần
       const brandToSync = Object.assign({}, db.brand);
 
       const size = JSON.stringify(brandToSync).length;
       if (size > FIRESTORE_DOC_SAFE_LIMIT) {
-        showAppAlert('Logo/ảnh đại diện đang quá lớn để đồng bộ lên mây (vẫn lưu được trên máy này). Hãy chọn ảnh logo có dung lượng nhỏ hơn.');
+        showAppAlert('Logo/ảnh đại diện đang quá lớn để đồng bộ lên mây.');
         return;
       }
 
@@ -1724,18 +1758,17 @@
         .set(brandToSync, { merge: true })
         .catch(function(err) {
           console.error('Lỗi đồng bộ cài đặt lên mây:', err);
-          if (isOfflineFirestoreError(err)) return; // Mất mạng: đã lưu máy, sẽ tự đồng bộ khi có mạng lại
-          showAppAlert('Không thể đồng bộ logo/cài đặt lên mây (đã lưu trên máy này). Lỗi: ' + (err && err.message ? err.message : err));
+          if (isOfflineFirestoreError(err)) return;
+          showAppAlert('Không thể đồng bộ logo/cài đặt lên mây: ' + (err && err.message ? err.message : err));
         });
     }
 
-    // Đẩy TOÀN BỘ dữ liệu hiện có trên máy lên mây (dùng khi mới bật đồng bộ lần đầu, hoặc sau khi phục hồi file sao lưu)
     async function cloudPushAllToCloud() {
       if (!cloudFirestore || !cloudUser) {
         showAppAlert('Vui lòng đăng nhập trước.');
         return;
       }
-      if (!(await showAppConfirm('Đẩy toàn bộ dữ liệu khách hàng trên máy này lên mây? Dữ liệu trên mây có cùng khách sẽ bị ghi đè bằng dữ liệu trên máy này.'))) return;
+      if (!(await showAppConfirm('Đẩy toàn bộ dữ liệu máy này lên mây? Dữ liệu trùng sẽ bị ghi đè.'))) return;
 
       syncBrandToCloud();
       let count = 0;
@@ -1757,31 +1790,7 @@
         passcode: "123456",
         msgTemplate: defaultReminderTemplate
       },
-      customers: [
-        {
-          id: "c1",
-          name: "Ngọc Ánh",
-          phone: "0988228480",
-          address: "Kinh 4",
-          sessions: [
-            {
-              id: "s1",
-              service: "Mày",
-              date: "2026-08-15T15:00",
-              preStatus: "Mày nhạt",
-              process: "Điêu khắc sợi",
-              colorMix: "Đỏ",
-              price: 2000000,
-              paid: 2000000,
-              warrantyMonths: 3,
-              warrantyDone: false,
-              warrantyDate: null,
-              imgBefore: "",
-              imgAfter: ""
-            }
-          ]
-        }
-      ],
+      customers: [],
       appointments: []
     };
 
@@ -1857,8 +1866,6 @@
       return new Intl.NumberFormat('vi-VN').format(amount || 0) + ' đ';
     }
 
-    // Chống XSS: escape ký tự đặc biệt trước khi chèn vào innerHTML.
-    // Áp dụng cho MỌI dữ liệu do người dùng nhập (tên, SĐT, địa chỉ, ghi chú...)
     function escapeHtml(str) {
       if (str === null || str === undefined) return '';
       return String(str)
@@ -1869,15 +1876,10 @@
         .replace(/'/g, '&#039;');
     }
 
-    // Giống escapeHtml nhưng giữ lại xuống dòng dưới dạng <br> (dùng cho textarea nhiều dòng)
     function escapeHtmlMultiline(str) {
       return escapeHtml(str).replace(/\n/g, '<br>');
     }
 
-    // Dùng khi chèn dữ liệu vào BÊN TRONG một chuỗi JS đặt trong thuộc tính onclick="...('...')"
-    // Trình duyệt giải mã HTML entity trước khi chạy JS, nên chỉ escapeHtml() là chưa đủ ở đây
-    // (dấu nháy đơn ' sẽ thoát ra ngoài chuỗi JS và cho phép chèn mã tuỳ ý).
-    // Thứ tự bắt buộc: escape cho ngữ cảnh JS string TRƯỚC, rồi mới escape cho thuộc tính HTML.
     function escapeJsAttr(str) {
       if (str === null || str === undefined) return '';
       return String(str)
@@ -1957,8 +1959,7 @@
       };
     }
 
-    // --- Nhắc lịch bảo hành tự động khi mở app ---
-    const AUTO_REMIND_DAYS_THRESHOLD = 15; // đồng bộ với ngưỡng "sắp hết hạn" đang dùng ở tab Bảo hành
+    const AUTO_REMIND_DAYS_THRESHOLD = 15;
 
     function getAutoReminderCandidates() {
       let candidates = [];
@@ -1983,7 +1984,6 @@
           }
         });
       });
-      // Quá hạn hiển thị trước, rồi tới gần hạn nhất
       candidates.sort((a, b) => {
         if (a.isOverdue && !b.isOverdue) return -1;
         if (!a.isOverdue && b.isOverdue) return 1;
@@ -1992,7 +1992,6 @@
       return candidates;
     }
 
-    // Lấy các lịch hẹn CÒN HIỆU LỰC (chưa hoàn tất/huỷ, chưa bấm "không nhắc") rơi vào HÔM NAY
     function getTodayAppointmentCandidates() {
       const now = new Date();
       const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
@@ -2100,7 +2099,6 @@
       closeModal('autoWarrantyReminderModal');
     }
 
-    // --- Quản lý Lịch hẹn khách ---
     function openAppointmentModal(id = null) {
       document.getElementById('apptEditId').value = id || '';
       if (id) {
@@ -2112,7 +2110,6 @@
         document.getElementById('apptDateTime').value = appt.dateTime || '';
         document.getElementById('apptNote').value = appt.note || '';
 
-        // Tìm đúng nhóm dịch vụ chứa dịch vụ đã lưu để hiện lại đúng chip
         let groupFound = 'moi';
         for (let g in serviceCategories) {
           if (serviceCategories[g].items.includes(appt.service)) { groupFound = g; break; }
@@ -2124,7 +2121,6 @@
         document.getElementById('apptPhone').value = '';
         document.getElementById('apptNote').value = '';
         toggleApptServiceGroup('moi');
-        // Mặc định gợi ý hẹn vào cùng giờ, 1 ngày sau hôm nay
         const suggested = new Date(Date.now() + 24 * 60 * 60 * 1000);
         document.getElementById('apptDateTime').value = suggested.toISOString().slice(0, 16);
       }
@@ -2163,7 +2159,7 @@
           appt.service = service;
           appt.dateTime = dateTime;
           appt.note = note;
-          appt.dismissed = false; // sửa lại lịch hẹn thì nhắc lại từ đầu
+          appt.dismissed = false;
         }
       } else {
         apptId = 'a_' + Date.now();
@@ -2196,7 +2192,6 @@
       }
     }
 
-    // Mở sẵn form "Thêm khách hàng" với tên/SĐT lấy từ lịch hẹn - đỡ phải gõ lại khi khách đã tới
     function openAddCustomerModalFromAppointment(apptId) {
       const appt = (db.appointments || []).find(a => a.id === apptId);
       if (!appt) return;
@@ -2205,7 +2200,6 @@
       document.getElementById('custName').value = appt.name || '';
       document.getElementById('custPhone').value = appt.phone || '';
 
-      // Tự chọn sẵn đúng dịch vụ đã hẹn (khớp chip) thay vì phải chọn lại từ đầu
       if (appt.service) {
         let groupFound = null;
         for (let g in serviceCategories) {
@@ -2245,7 +2239,6 @@
       document.getElementById('remindModal').style.display = 'block';
     }
 
-    // Gửi tin nhắn nhanh (chăm sóc chung) cho khách hàng - dùng ở tab Khách hàng
     function openQuickMessageModal(custId) {
       const customer = db.customers.find(c => c.id === custId);
       if (!customer) return;
@@ -2265,8 +2258,6 @@
       const container = document.getElementById('appointmentList');
       if (!db.appointments) db.appointments = [];
 
-      // Chỉ hiển thị các lịch hẹn CÒN HIỆU LỰC (chưa bấm "Đã đến", chưa bị huỷ):
-      // gồm khách quá hẹn (đã qua giờ hẹn) hoặc khách chưa tới ngày hẹn (hôm nay/sắp tới)
       let filtered = db.appointments.filter(a =>
         a.status === 'pending' &&
         (
@@ -2281,7 +2272,6 @@
         return;
       }
 
-      // Sắp xếp theo thời gian hẹn gần nhất lên đầu
       filtered.sort((a, b) => (a.dateTime || '').localeCompare(b.dateTime || ''));
 
       const now = new Date();
@@ -2342,10 +2332,6 @@
       }
     }
 
-    // Tải/chụp ảnh logo cửa hàng - tự nén giống ảnh trước/sau khi làm
-    // Đọc thẻ EXIF "Orientation" từ file JPEG - ảnh chụp bằng camera điện thoại thường
-    // lưu dữ liệu ảnh nằm ngang kèm thẻ này để báo "cần xoay lại bao nhiêu độ khi hiển thị".
-    // Canvas KHÔNG tự đọc thẻ này, nên nếu bỏ qua, ảnh vẽ ra sẽ bị sai chiều/méo lệch tỉ lệ.
     function getExifOrientation(file, callback) {
       if (!file.type || file.type.indexOf('jpeg') === -1) { callback(1); return; }
       const reader = new FileReader();
@@ -2390,7 +2376,6 @@
       reader.readAsArrayBuffer(file.slice(0, 128 * 1024));
     }
 
-    // Nén ảnh dùng chung cho logo và ảnh trước/sau khi làm - tự xoay đúng chiều theo EXIF
     function compressImageFile(file, maxDimension, quality, onDone) {
       getExifOrientation(file, function(orientation) {
         const reader = new FileReader();
@@ -2409,7 +2394,6 @@
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
 
-            // Ảnh xoay 90/270 độ (orientation 5-8) thì chiều rộng/cao canvas phải đảo ngược
             if (orientation >= 5 && orientation <= 8) {
               canvas.width = height;
               canvas.height = width;
@@ -2578,14 +2562,12 @@
       if (tabId === 'revenue') renderRevenue();
     }
 
-    // Số ngày cho phép trước khi nhắc sao lưu lại
     const BACKUP_REMINDER_DAYS = 7;
 
     function renderBackupReminder() {
       const el = document.getElementById('backupReminderBanner');
       if (!el) return;
 
-      // Không có khách hàng thì chưa cần nhắc sao lưu
       if (!db.customers || db.customers.length === 0) {
         el.style.display = 'none';
         return;
@@ -2650,7 +2632,6 @@
       recentContainer.innerHTML = html;
     }
 
-    // --- Chế độ chọn nhiều khách hàng (nhấn giữ để bật) ---
     let customerSelectMode = false;
     let selectedCustomerIds = new Set();
     let custLongPressTimer = null;
@@ -2684,7 +2665,6 @@
       clearTimeout(custLongPressTimer);
     }
 
-    // Chạm nhanh (click bình thường): nếu vừa xảy ra nhấn giữ thì bỏ qua (đã xử lý ở timer rồi)
     function custCardClick(e, custId) {
       if (custLongPressFired) {
         custLongPressFired = false;
@@ -2715,7 +2695,7 @@
     async function deleteSelectedCustomers() {
       const count = selectedCustomerIds.size;
       if (count === 0) return;
-      if (!(await showAppConfirm(`CẢNH BÁO: Bạn có chắc chắn muốn xóa toàn bộ hồ sơ của ${count} khách hàng đã chọn không? Hành động này không thể hoàn tác.`))) return;
+      if (!(await showAppConfirm(`CẢNH BÁO: Bạn có chắc chắn muốn xóa toàn bộ hồ sơ của ${count} khách hàng đã chọn không?`))) return;
 
       const idsToDelete = Array.from(selectedCustomerIds);
       db.customers = db.customers.filter(c => !selectedCustomerIds.has(c.id));
@@ -3280,7 +3260,6 @@
       document.getElementById('customerModal').style.display = 'block';
     }
 
-    // Chấp nhận số điện thoại VN cơ bản: 9-11 chữ số, có thể có dấu cách/gạch ngang
     function isValidPhone(phone) {
       const digitsOnly = phone.replace(/[\s.-]/g, '');
       return /^0?\d{9,11}$/.test(digitsOnly);
@@ -3302,12 +3281,10 @@
       const price = priceRaw ? parseInt(priceRaw) : 0;
 
       let paidRaw = document.getElementById('custPaid').value.replace(/\D/g, '');
-      // Để trống ô "Đã trả" = MẶC ĐỊNH CHƯA TRẢ GÌ (nợ toàn bộ), vì thực tế khách thường
-      // trả tiền SAU khi làm xong, không phải lúc mới nhập thông tin ban đầu.
       const paid = paidRaw !== "" ? parseInt(paidRaw) : 0;
 
       if (paid > price) {
-        if (!(await showAppConfirm(`Số tiền đã trả (${formatMoney(paid)}) đang lớn hơn tổng giá tiền (${formatMoney(price)}). Bạn có chắc muốn lưu như vậy không?`))) {
+        if (!(await showAppConfirm(`Số tiền đã trả (${formatMoney(paid)}) đang lớn hơn tổng giá tiền (${formatMoney(price)}). Bạn có chắc muốn lưu?`))) {
           return;
         }
       }
@@ -3356,7 +3333,7 @@
               return;
             }
             if (!isValidPhone(phone)) {
-              showAppAlert('Số điện thoại không hợp lệ! Vui lòng nhập 9-11 chữ số (VD: 0908123456).');
+              showAppAlert('Số điện thoại không hợp lệ! Vui lòng nhập 9-11 chữ số.');
               return;
             }
             customer.name = name;
@@ -3388,7 +3365,7 @@
           return;
         }
         if (!isValidPhone(phone)) {
-          showAppAlert('Số điện thoại không hợp lệ! Vui lòng nhập 9-11 chữ số (VD: 0908123456).');
+          showAppAlert('Số điện thoại không hợp lệ! Vui lòng nhập 9-11 chữ số.');
           return;
         }
 
@@ -3448,7 +3425,7 @@
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <h2 style="color: var(--primary-gold); font-size: 18px;">${escapeHtml(customer.name)}</h2>
             <div style="display: flex; gap: 6px;">
-              <button class="btn-outline" onclick="openEditFullCustomerModal('${customer.id}')" title="Sửa toàn bộ thông tin & ảnh đối chiếu">
+              <button class="btn-outline" onclick="openEditFullCustomerModal('${customer.id}')" title="Sửa toàn bộ thông tin">
                 <i class="fa-solid fa-pen"></i> Sửa
               </button>
               <button class="btn-danger-outline" onclick="deleteCustomer('${customer.id}')">
@@ -3538,13 +3515,11 @@
           html += `
             <div class="card" style="background: var(--bg-input); margin-bottom: 14px; font-size: 13px; line-height: 1.6; border-left: 4px solid ${s.warrantyDone ? 'var(--success)' : (w.isOverdue ? 'var(--danger)' : 'var(--primary-gold)')}; padding: 14px;">
               
-              <!-- Hàng tiêu đề dịch vụ và giá -->
               <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
                 <span style="font-weight: 700; color: var(--primary-gold); font-size: 15px;">Lần ${idx + 1}: ${escapeHtml(s.service)}</span>
                 <span style="font-weight: 700; color: var(--primary-gold); font-size: 15px;">${formatMoney(s.price)}</span>
               </div>
 
-              <!-- Hàng trạng thái (Badges) + Nút sửa được sắp xếp gọn gàng -->
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 6px;">
                 <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
                   ${paymentBadge}
@@ -3561,13 +3536,11 @@
                 </div>
               </div>
 
-              <!-- Chi tiết thanh toán -->
               <div style="background: rgba(0,0,0,0.25); padding: 7px 10px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; font-size: 12px;">
                 <span>Đã thanh toán: <strong style="color: var(--success);">${formatMoney(paidVal)}</strong></span>
                 <span>Còn nợ lại: <strong style="color: ${debtVal > 0 ? 'var(--danger)' : 'var(--text-muted)'};">${formatMoney(debtVal)}</strong></span>
               </div>
 
-              <!-- Chi tiết thông số kỹ thuật dịch vụ -->
               <div style="font-size: 12.5px; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px;">
                 <div><span style="color: var(--text-muted);">Thời gian làm:</span> <strong style="color: #fff;">${formatDateTimeDisplay(s.date)}</strong></div>
                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;"><span style="color: var(--text-muted);">Hạn bảo hành:</span> <strong style="color: var(--primary-gold);">${w.expiryDateStr}</strong> ${badge}</div>
@@ -3586,7 +3559,6 @@
       document.getElementById('customerDetailModal').style.display = 'block';
     }
 
-    // --- Trình xem ảnh: zoom 2 ngón tay + vuốt chuyển ảnh trước/sau ---
     let imageViewerList = [];
     let imageViewerIndex = 0;
     let ivScale = 1, ivTx = 0, ivTy = 0;
@@ -3598,7 +3570,6 @@
     const IV_MIN_SCALE = 1;
     const IV_MAX_SCALE = 5;
 
-    // items: mảng [{src, caption}, ...]; startIndex: ảnh hiện lên đầu tiên
     function openImageViewer(items, startIndex) {
       if (!items || items.length === 0) return;
       imageViewerList = items;
@@ -3613,7 +3584,6 @@
       imageViewerList = [];
     }
 
-    // Mở ảnh trước/sau của 1 lượt làm cụ thể - tra cứu theo ID nên không cần nhúng dữ liệu ảnh vào HTML
     function openSessionImageViewer(custId, sessionId, startType) {
       const customer = db.customers.find(c => c.id === custId);
       if (!customer) return;
@@ -3633,7 +3603,6 @@
       openImageViewer(items, startIndex);
     }
 
-    // Dùng cho ảnh preview trong form Thêm/Sửa (trước khi lưu)
     function openImageViewerFromForm(clickedType) {
       const beforeImg = document.getElementById('previewBefore');
       const afterImg = document.getElementById('previewAfter');
@@ -3714,7 +3683,6 @@
       } else if (e.touches.length === 1) {
         const now = Date.now();
         if (now - ivLastTapTime < 300) {
-          // Chạm nhanh 2 lần: bật/tắt zoom nhanh
           if (ivScale > 1) {
             ivResetZoom();
           } else {
@@ -3761,7 +3729,7 @@
           const dy = e.touches[0].clientY - ivSwipeStartY;
           if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
             ivSwipeMoved = true;
-            if (Math.abs(dx) > Math.abs(dy)) e.preventDefault(); // vuốt ngang: chặn cuộn trang dọc
+            if (Math.abs(dx) > Math.abs(dy)) e.preventDefault();
           }
         }
       }
@@ -3772,8 +3740,8 @@
         const dx = e.changedTouches[0].clientX - ivSwipeStartX;
         const dy = e.changedTouches[0].clientY - ivSwipeStartY;
         if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
-          if (dx < 0) ivGoNext(); // vuốt trái -> ảnh kế tiếp (Sau khi làm)
-          else ivGoPrev(); // vuốt phải -> ảnh trước đó
+          if (dx < 0) ivGoNext();
+          else ivGoPrev();
         }
       }
       ivIsDragging = false;
@@ -3894,7 +3862,6 @@
       document.getElementById('filteredRevResult').innerText = `Tổng thực thu (${startFormatted} đến ${endFormatted}): ${formatMoney(total)}`;
     }
 
-    // Danh sách ngân hàng hỗ trợ VietQR (mã BIN chuẩn Napas) - đủ dùng cho phần lớn tiệm nhỏ
     const VIETQR_BANKS = [
       { id: '970436', name: 'Vietcombank' },
       { id: '970415', name: 'VietinBank' },
@@ -3929,7 +3896,6 @@
       });
     }
 
-    // Bỏ dấu tiếng Việt - nội dung chuyển khoản nên để không dấu để tương thích mọi app ngân hàng
     function removeVietnameseTones(str) {
       str = str || '';
       str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, 'a');
@@ -3949,10 +3915,8 @@
       return str;
     }
 
-    // Lưu tạm bối cảnh giao dịch đang thanh toán để nút "Xác nhận" biết cập nhật vào đâu
     let currentPaymentContext = null;
 
-    // custId + sessionId: xác nhận cho 1 lượt làm cụ thể. Nếu sessionId = null: xác nhận cho TỔNG công nợ của khách (trừ dần từ lượt cũ nhất).
     function openPaymentQR(custId, sessionId, amount, note) {
       const bankId = db.brand && db.brand.bankId;
       const accountNo = db.brand && db.brand.bankAccountNo;
@@ -3985,12 +3949,11 @@
           <input type="text" id="paymentConfirmAmount" class="form-control" value="${new Intl.NumberFormat('vi-VN').format(amount)}" inputmode="numeric" oninput="formatCurrencyInput(this)">
         </div>
         <button class="btn-gold" style="width: 100%; margin-top: 8px; padding: 10px;" onclick="confirmPaymentReceived()"><i class="fa-solid fa-check"></i> Xác nhận đã nhận tiền</button>
-        <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Chỉ bấm xác nhận SAU KHI đã kiểm tra tiền vào tài khoản. Nếu khách chưa chuyển, đóng bảng này lại mà không bấm xác nhận.</div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Chỉ bấm xác nhận SAU KHI đã kiểm tra tiền vào tài khoản.</div>
       `;
       document.getElementById('paymentQrModal').style.display = 'block';
     }
 
-    // Xác nhận số tiền vừa nhận, cập nhật công nợ và trạng thái tương ứng
     async function confirmPaymentReceived() {
       if (!currentPaymentContext) return;
       const { custId, sessionId } = currentPaymentContext;
@@ -4006,13 +3969,11 @@
       if (!customer || !customer.sessions) return;
 
       if (sessionId) {
-        // Xác nhận cho đúng 1 lượt làm cụ thể
         const session = customer.sessions.find(s => s.id === sessionId);
         if (!session) return;
         const currentPaid = (session.paid !== undefined) ? session.paid : 0;
         session.paid = Math.min((session.price || 0), currentPaid + receivedAmount);
       } else {
-        // Xác nhận cho tổng công nợ: trừ dần vào các lượt còn nợ, ưu tiên lượt cũ nhất trước
         let remaining = receivedAmount;
         for (const session of customer.sessions) {
           if (remaining <= 0) break;
@@ -4056,10 +4017,10 @@
       document.getElementById('settingBankAccountName').value = db.brand.bankAccountName || '';
       document.getElementById('settingsModal').style.display = 'block';
       renderCloudSettingsBox();
+      renderGoogleCalendarBox();
     }
 
     async function saveBrandSettings() {
-      // Nếu người dùng muốn đổi mật mã doanh thu, bắt buộc nhập đúng mật khẩu hiện tại trước
       let newPass = document.getElementById('settingPasscode').value;
       if (newPass) {
         let oldPass = document.getElementById('settingOldPasscode').value;
@@ -4088,14 +4049,12 @@
       await saveDB();
       syncBrandToCloud();
       renderHome();
-      // Xoá ô mật khẩu sau khi lưu thành công, không đóng modal để tiếp tục chỉnh các tab khác
       document.getElementById('settingPasscode').value = '';
       document.getElementById('settingOldPasscode').value = '';
       showAppAlert('Đã cập nhật cài đặt thành công!');
     }
 
     async function exportDataFile() {
-      // Ghi lại thời điểm sao lưu gần nhất TRƯỚC khi xuất, để banner nhắc nhở tính đúng
       if (!db.brand) db.brand = {};
       db.brand.lastExportDate = getTodayDateTimeString();
       await saveDB();
@@ -4109,10 +4068,9 @@
       downloadAnchor.click();
       downloadAnchor.remove();
 
-      renderHome(); // cập nhật lại banner nhắc sao lưu trên trang chủ
+      renderHome();
     }
 
-    // Xử lý dữ liệu import dùng chung cho cả 2 cách: chọn file HOẶC dán nội dung text
     async function processImportedJsonText(jsonText) {
       try {
         const importedDB = JSON.parse(jsonText);
@@ -4159,7 +4117,7 @@
         processImportedJsonText(e.target.result);
       };
       reader.onerror = function(e) {
-        showAppAlert('Lỗi khi đọc file từ điện thoại: ' + (reader.error ? reader.error.message : 'không rõ nguyên nhân'));
+        showAppAlert('Lỗi khi đọc file: ' + (reader.error ? reader.error.message : 'không rõ nguyên nhân'));
       };
       reader.readAsText(file);
     }
@@ -4168,8 +4126,6 @@
       document.getElementById(id).style.display = 'none';
     }
 
-    // --- Thông báo & Xác nhận tự thiết kế (thay cho alert()/confirm() gốc của trình duyệt,
-    //     vì hộp thoại gốc luôn tự hiện thêm dòng tên domain mà không cách nào ẩn được) ---
     function showAppAlert(message) {
       document.getElementById('customAlertMessage').innerText = message;
       document.getElementById('customAlertModal').style.display = 'block';
@@ -4200,9 +4156,9 @@
     window.onload = async function() {
       await initDB();
       initFirebase();
+      initGoogleCalendarClient();
       showAutoWarrantyReminderPopup();
 
-      // Đăng ký service worker để app mở được kể cả khi mất mạng tạm thời
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(err => console.error('Lỗi đăng ký service worker:', err));
       }
