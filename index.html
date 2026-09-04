@@ -2265,23 +2265,24 @@
       const container = document.getElementById('appointmentList');
       if (!db.appointments) db.appointments = [];
 
+      // Chỉ hiển thị các lịch hẹn CÒN HIỆU LỰC (chưa bấm "Đã đến", chưa bị huỷ):
+      // gồm khách quá hẹn (đã qua giờ hẹn) hoặc khách chưa tới ngày hẹn (hôm nay/sắp tới)
       let filtered = db.appointments.filter(a =>
-        (a.name && a.name.toLowerCase().includes(q)) ||
-        (a.phone && a.phone.includes(q)) ||
-        (a.service && a.service.toLowerCase().includes(q))
+        a.status === 'pending' &&
+        (
+          (a.name && a.name.toLowerCase().includes(q)) ||
+          (a.phone && a.phone.includes(q)) ||
+          (a.service && a.service.toLowerCase().includes(q))
+        )
       );
 
       if (filtered.length === 0) {
-        container.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 25px;">Chưa có lịch hẹn nào. Bấm "Thêm lịch hẹn" để bắt đầu.</div>`;
+        container.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 25px;">Không có lịch hẹn nào đang chờ. Bấm "Thêm lịch hẹn" để bắt đầu.</div>`;
         return;
       }
 
-      // Sắp xếp: đang chờ (gần nhất trước) lên đầu, rồi tới đã hoàn tất/đã huỷ
-      filtered.sort((a, b) => {
-        if (a.status === 'pending' && b.status !== 'pending') return -1;
-        if (a.status !== 'pending' && b.status === 'pending') return 1;
-        return (a.dateTime || '').localeCompare(b.dateTime || '');
-      });
+      // Sắp xếp theo thời gian hẹn gần nhất lên đầu
+      filtered.sort((a, b) => (a.dateTime || '').localeCompare(b.dateTime || ''));
 
       const now = new Date();
       const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
