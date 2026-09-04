@@ -585,7 +585,7 @@
       align-items: center;
       transition: background 0.15s;
     }
-    .customer-item:hover { background: rgba(255,255,255,0.02); }
+    .customer-item:hover { background: rgba(255,255,200,0.02); }
 
     /* Grid Stats */
     .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
@@ -677,6 +677,7 @@
     @media (min-width: 900px) {
       .container { max-width: 1100px; padding: 26px 24px; }
       header { padding: 16px 26px; }
+
       .bottom-nav {
         max-width: 1100px;
         left: 50%;
@@ -1174,7 +1175,7 @@
         <div class="modal-close-btn" onclick="closeModal('cloudLoginModal')"><i class="fa-solid fa-xmark"></i></div>
       </div>
       <p style="font-size: 12.5px; color: var(--text-muted); line-height: 1.6; margin-bottom: 14px;">
-        Đăng nhập cùng một tài khoản trên mọi thiết bị (điện thoại, máy tính...) để dữ liệu tự động đồng bộ hai chiều. Lần đầu dùng, hãy bấm "Tạo tài khoản mới" để tạo tài khoản riêng cho cửa hàng.
+        Đăng nhập cùng một tài khoản trên mọi thiết bị để dữ liệu tự động đồng bộ hai chiều. Lần đầu dùng, hãy bấm "Tạo tài khoản mới" để tạo tài khoản riêng cho cửa hàng.
       </p>
       <div class="form-group">
         <label>Email</label>
@@ -1284,7 +1285,7 @@
             <i class="fa-regular fa-calendar-days" style="color: var(--primary-gold);"></i> Đồng bộ Google Calendar
           </label>
           <div id="gcalStatusContent" style="font-size: 12px; color: var(--text-muted); line-height: 1.6;">
-            Đang tải dữ liệu Google Calendar...
+            Đang tải thông tin Google Calendar...
           </div>
         </div>
 
@@ -1345,7 +1346,7 @@
     });
 
     /* ============================================================================
-       GOOGLE CALENDAR OAUTH (GOOGLE IDENTITY SERVICES)
+       GOOGLE CALENDAR OAUTH & API (GOOGLE IDENTITY SERVICES)
        ============================================================================ */
     const GCAL_CLIENT_ID = "716343551019-gvshb80eamtcpap1gsvji2lbsmiohhkm.apps.googleusercontent.com";
     const GCAL_SCOPES = "https://www.googleapis.com/auth/calendar.events";
@@ -1367,7 +1368,7 @@
               localStorage.setItem('gcal_access_token', gcalAccessToken);
               localStorage.setItem('gcal_connected', 'true');
               renderGoogleCalendarBox();
-              showAppAlert("Kết nối Google Calendar thành công! Các lịch hẹn giờ đây có thể đồng bộ với Google Calendar.");
+              showAppAlert("Kết nối Google Calendar thành công!");
             }
           },
         });
@@ -1388,11 +1389,14 @@
             <i class="fa-solid fa-circle-check"></i> <strong>Đã liên kết Google Calendar</strong>
           </div>
           <div style="font-size: 11.5px; margin-bottom: 10px; color: var(--text-muted);">
-            Tài khoản đã sẵn sàng đồng bộ lịch hẹn khách hàng với Google Calendar trên điện thoại và máy tính.
+            Lịch hẹn của tiệm sẽ tự động đẩy sang Google Calendar kèm chuông nhắc trước 1 giờ và 1 ngày.
           </div>
-          <div style="display: flex; gap: 8px;">
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button type="button" class="btn-outline" style="padding: 7px 12px; font-size: 11px; border-color: var(--primary-gold); color: var(--primary-gold);" onclick="syncAllAppointmentsToGCal()">
+              <i class="fa-solid fa-cloud-arrow-up"></i> Đẩy toàn bộ lịch hẹn lên Google
+            </button>
             <button type="button" class="btn-outline" style="padding: 7px 12px; font-size: 11px;" onclick="connectGoogleCalendar()">
-              <i class="fa-solid fa-rotate"></i> Cấp lại quyền / Đổi tài khoản
+              <i class="fa-solid fa-rotate"></i> Đổi tài khoản
             </button>
             <button type="button" class="btn-danger-outline" style="padding: 7px 12px; font-size: 11px;" onclick="disconnectGoogleCalendar()">
               <i class="fa-solid fa-link-slash"></i> Ngắt kết nối
@@ -1402,7 +1406,7 @@
       } else {
         el.innerHTML = `
           <div style="margin-bottom: 10px;">
-            Chưa kết nối Google Calendar. Kết nối để tự động đưa lịch hẹn của tiệm lên lịch Google và chuông báo nhắc việc trên điện thoại.
+            Chưa kết nối Google Calendar. Kết nối để tự động đưa lịch hẹn của tiệm lên Google Calendar và đổ chuông thông báo trên điện thoại.
           </div>
           <button type="button" class="btn-gold" style="padding: 10px; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; width: auto;" onclick="connectGoogleCalendar()">
             <i class="fa-brands fa-google"></i> Đăng nhập Google Calendar
@@ -1418,7 +1422,7 @@
       if (gcalTokenClient) {
         gcalTokenClient.requestAccessToken({ prompt: 'consent' });
       } else {
-        showAppAlert("Thư viện Google đang tải hoặc chưa sẵn sàng. Vui lòng kiểm tra kết nối mạng rồi thử lại.");
+        showAppAlert("Thư viện Google đang tải, vui lòng thử lại sau vài giây.");
       }
     }
 
@@ -1432,11 +1436,104 @@
       localStorage.removeItem('gcal_access_token');
       localStorage.removeItem('gcal_connected');
       renderGoogleCalendarBox();
-      showAppAlert("Đã ngắt kết nối với Google Calendar.");
+      showAppAlert("Đã ngắt kết nối Google Calendar.");
+    }
+
+    // Đẩy / Cập nhật 1 lịch hẹn sang Google Calendar
+    async function syncAppointmentToGoogleCalendar(appt) {
+      const isConnected = localStorage.getItem('gcal_connected') === 'true';
+      const token = localStorage.getItem('gcal_access_token');
+      if (!isConnected || !token || !appt || !appt.dateTime) return;
+
+      const startDt = new Date(appt.dateTime);
+      if (isNaN(startDt.getTime())) return;
+      const endDt = new Date(startDt.getTime() + 90 * 60 * 1000); // Mặc định 90 phút
+
+      const eventPayload = {
+        summary: `[Hẹn Khách] ${appt.name} - ${appt.service || 'Phun xăm'}`,
+        description: `Khách hàng: ${appt.name}\nSố điện thoại: ${appt.phone}\nDịch vụ: ${appt.service || 'Chưa ghi'}\nGhi chú: ${appt.note || 'Không có'}`,
+        start: {
+          dateTime: startDt.toISOString(),
+          timeZone: 'Asia/Ho_Chi_Minh'
+        },
+        end: {
+          dateTime: endDt.toISOString(),
+          timeZone: 'Asia/Ho_Chi_Minh'
+        },
+        reminders: {
+          useDefault: false,
+          overrides: [
+            { method: 'popup', minutes: 60 },   // Thông báo trước 1 tiếng
+            { method: 'popup', minutes: 1440 }  // Thông báo trước 1 ngày
+          ]
+        }
+      };
+
+      try {
+        let url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+        let method = 'POST';
+
+        if (appt.gcalEventId) {
+          url += `/${appt.gcalEventId}`;
+          method = 'PUT';
+        }
+
+        const res = await fetch(url, {
+          method: method,
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(eventPayload)
+        });
+
+        if (res.status === 401) {
+          if (gcalTokenClient) gcalTokenClient.requestAccessToken({ prompt: '' });
+          return;
+        }
+
+        if (res.ok) {
+          const createdEvent = await res.json();
+          appt.gcalEventId = createdEvent.id;
+          await saveDB();
+        }
+      } catch (err) {
+        console.error('Lỗi đẩy lịch hẹn sang Google Calendar:', err);
+      }
+    }
+
+    // Xóa sự kiện trên Google Calendar
+    async function deleteGoogleCalendarEvent(gcalEventId) {
+      const token = localStorage.getItem('gcal_access_token');
+      if (!token || !gcalEventId) return;
+
+      try {
+        await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${gcalEventId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      } catch (err) {
+        console.error('Lỗi xoá lịch trên Google Calendar:', err);
+      }
+    }
+
+    // Đẩy toàn bộ danh sách lịch hẹn đang có lên Google Calendar
+    async function syncAllAppointmentsToGCal() {
+      const list = (db.appointments || []).filter(a => a.status === 'pending');
+      if (list.length === 0) {
+        showAppAlert("Không có lịch hẹn nào đang chờ để đồng bộ.");
+        return;
+      }
+      let count = 0;
+      for (const appt of list) {
+        await syncAppointmentToGoogleCalendar(appt);
+        count++;
+      }
+      showAppAlert(`Đã đồng bộ thành công ${count} lịch hẹn lên Google Calendar!`);
     }
 
     /* ============================================================================
-       ĐỒNG BỘ NHIỀU THIẾT BỊ VỚI FIREBASE
+       FIREBASE CLOUD SYNC
        ============================================================================ */
     const firebaseConfig = {
       apiKey: "AIzaSyBfqd2mahd5MvZX4c2Ab5M5xD_cX16OF8w",
@@ -1532,7 +1629,7 @@
       document.getElementById('cloudLoginError').style.display = 'none';
       document.getElementById('cloudRetryBox').style.display = 'none';
       if (typeof firebase === 'undefined') {
-        cloudShowError('Vẫn chưa tải được thư viện đồng bộ. Hãy kiểm tra kết nối mạng, sau đó đóng hẳn app rồi mở lại.');
+        cloudShowError('Vẫn chưa tải được thư viện đồng bộ. Hãy kiểm tra mạng rồi mở lại app.');
         document.getElementById('cloudRetryBox').style.display = 'block';
         return;
       }
@@ -1547,7 +1644,7 @@
     function cloudSignUp() {
       document.getElementById('cloudLoginError').style.display = 'none';
       if (!cloudAuth) {
-        cloudShowError('Chưa kết nối được máy chủ đồng bộ. Kiểm tra mạng rồi thử lại.');
+        cloudShowError('Chưa kết nối được máy chủ đồng bộ. Hãy kiểm tra kết nối mạng.');
         document.getElementById('cloudRetryBox').style.display = 'block';
         return;
       }
@@ -1567,7 +1664,7 @@
     function cloudSignIn() {
       document.getElementById('cloudLoginError').style.display = 'none';
       if (!cloudAuth) {
-        cloudShowError('Chưa kết nối được máy chủ đồng bộ. Kiểm tra mạng rồi thử lại.');
+        cloudShowError('Chưa kết nối được máy chủ đồng bộ. Hãy kiểm tra kết nối mạng.');
         document.getElementById('cloudRetryBox').style.display = 'block';
         return;
       }
@@ -2174,6 +2271,13 @@
 
       await saveDB();
       syncAppointmentToCloud(apptId);
+
+      // Tự động đẩy lịch hẹn sang Google Calendar nếu đã kết nối
+      const targetAppt = db.appointments.find(a => a.id === apptId);
+      if (targetAppt) {
+        syncAppointmentToGoogleCalendar(targetAppt);
+      }
+
       closeModal('appointmentModal');
       renderAppointmentList();
       showAppAlert('Đã lưu lịch hẹn thành công!');
@@ -2215,6 +2319,12 @@
 
     async function deleteAppointment(id) {
       if (!(await showAppConfirm('Bạn có chắc muốn xóa lịch hẹn này không?'))) return;
+      
+      const appt = (db.appointments || []).find(a => a.id === id);
+      if (appt && appt.gcalEventId) {
+        deleteGoogleCalendarEvent(appt.gcalEventId);
+      }
+
       db.appointments = (db.appointments || []).filter(a => a.id !== id);
       await saveDB();
       cloudDeleteAppointment(id);
