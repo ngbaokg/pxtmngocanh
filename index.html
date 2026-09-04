@@ -1346,10 +1346,11 @@
     });
 
     /* ============================================================================
-       GOOGLE CALENDAR OAUTH & API (GOOGLE IDENTITY SERVICES)
+       GOOGLE CALENDAR OAUTH & API (TOÀN QUYỀN VÀ TỰ ĐỘNG DỌN DẸP LỊCH)
        ============================================================================ */
     const GCAL_CLIENT_ID = "716343551019-gvshb80eamtcpap1gsvji2lbsmiohhkm.apps.googleusercontent.com";
-    const GCAL_SCOPES = "https://www.googleapis.com/auth/calendar.events";
+    // Đổi sang Scope toàn quyền calendar để hỗ trợ xóa triệt để
+    const GCAL_SCOPES = "https://www.googleapis.com/auth/calendar";
 
     let gcalTokenClient = null;
     let gcalAccessToken = localStorage.getItem('gcal_access_token') || null;
@@ -1389,14 +1390,14 @@
             <i class="fa-solid fa-circle-check"></i> <strong>Đã liên kết Google Calendar</strong>
           </div>
           <div style="font-size: 11.5px; margin-bottom: 10px; color: var(--text-muted);">
-            Lịch hẹn của tiệm sẽ tự động đẩy và xóa trên Google Calendar kèm chuông nhắc trước 1 giờ và 1 ngày.
+            Lịch hẹn của tiệm sẽ tự động đẩy và xóa sạch trên Google Calendar kèm chuông thông báo.
           </div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
             <button type="button" class="btn-outline" style="padding: 7px 12px; font-size: 11px; border-color: var(--primary-gold); color: var(--primary-gold);" onclick="syncAllAppointmentsToGCal()">
               <i class="fa-solid fa-cloud-arrow-up"></i> Đẩy toàn bộ lịch hẹn lên Google
             </button>
             <button type="button" class="btn-outline" style="padding: 7px 12px; font-size: 11px;" onclick="connectGoogleCalendar()">
-              <i class="fa-solid fa-rotate"></i> Đổi tài khoản
+              <i class="fa-solid fa-rotate"></i> Cấp lại quyền / Đổi tài khoản
             </button>
             <button type="button" class="btn-danger-outline" style="padding: 7px 12px; font-size: 11px;" onclick="disconnectGoogleCalendar()">
               <i class="fa-solid fa-link-slash"></i> Ngắt kết nối
@@ -1490,16 +1491,14 @@
         if (res.status === 401) {
           localStorage.removeItem('gcal_access_token');
           if (gcalTokenClient) {
-            showAppAlert("Phiên Google Calendar đã hết hạn. Vui lòng cấp lại quyền!");
             gcalTokenClient.requestAccessToken({ prompt: '' });
           }
           return false;
         }
 
         if (!res.ok) {
-          const errData = await res.json();
-          console.error('Chi tiết lỗi từ Google Calendar API:', errData);
-          showAppAlert("Lỗi Google Calendar: " + (errData.error?.message || res.statusText));
+          const errData = await res.json().catch(() => ({}));
+          console.error('Lỗi API Calendar:', errData);
           return false;
         }
 
@@ -1513,30 +1512,60 @@
       }
     }
 
-    // Xóa sự kiện trực tiếp trên Google Calendar
-    async function deleteGoogleCalendarEvent(gcalEventId) {
-      const token = localStorage.getItem('gcal_access_token');
-      if (!token || !gcalEventId) return false;
+    // Xóa sự kiện trực tiếp trên Google Calendar (hỗ trợ cả xóa bằng Event ID hoặc tìm kiếm theo Tên nếu mất ID)
+    async function deleteGoogleCalendarEvent(appt) {
+      const isConnected = localStorage.getItem('gcal_connected') === 'true';
+      let token = localStorage.getItem('gcal_access_token');
+      if (!isConnected || !token || !appt) return false;
 
       try {
-        const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${gcalEventId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        // Cách 1: Xóa trực tiếp bằng gcalEventId nếu có sẵn
+        if (appt.gcalEventId) {
+          const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${appt.gcalEventId}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
 
-        if (res.status === 401) {
-          localStorage.removeItem('gcal_access_token');
-          if (gcalTokenClient) gcalTokenClient.requestAccessToken({ prompt: '' });
-          return false;
+          if (res.status === 401) {
+            localStorage.removeItem('gcal_access_token');
+            if (gcalTokenClient) gcalTokenClient.requestAccessToken({ prompt: '' });
+            return false;
+          }
+
+          if (res.status === 204 || res.status === 404 || res.ok) {
+            return true;
+          }
         }
 
-        return res.status === 204 || res.status === 404 || res.ok;
+        // Cách 2: Tìm kiếm sự kiện theo tên và SĐT trên Google Calendar để xóa triệt để
+        const searchKeyword = appt.name;
+        const searchUrl = `https://www.googleapis.com/calendar/v3/calendars/primary/events?q=${encodeURIComponent(searchKeyword)}`;
+        const searchRes = await fetch(searchUrl, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (searchRes.ok) {
+          const data = await searchRes.json();
+          if (data.items && data.items.length > 0) {
+            for (const item of data.items) {
+              // Khớp tên khách hoặc số điện thoại trong nội dung
+              if ((item.summary && item.summary.includes(appt.name)) || 
+                  (item.description && appt.phone && item.description.includes(appt.phone))) {
+                await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${item.id}`, {
+                  method: 'DELETE',
+                  headers: { 'Authorization': `Bearer ${token}` }
+                });
+              }
+            }
+            return true;
+          }
+        }
       } catch (err) {
         console.error('Lỗi khi xóa lịch hẹn trên Google Calendar:', err);
-        return false;
       }
+      return false;
     }
 
     // Đẩy toàn bộ danh sách lịch hẹn đang có lên Google Calendar
@@ -2341,20 +2370,21 @@
       }
     }
 
-    // Xóa lịch hẹn trên app kèm xoá trên Google Calendar
+    // Xóa lịch hẹn trên app kèm tự động xóa trên Google Calendar
     async function deleteAppointment(id) {
       if (!(await showAppConfirm('Bạn có chắc muốn xóa lịch hẹn này không?'))) return;
       
       const appt = (db.appointments || []).find(a => a.id === id);
-      if (appt && appt.gcalEventId) {
-        await deleteGoogleCalendarEvent(appt.gcalEventId);
+      if (appt) {
+        // Gọi hàm xóa trên Google Calendar trước
+        await deleteGoogleCalendarEvent(appt);
       }
 
       db.appointments = (db.appointments || []).filter(a => a.id !== id);
       await saveDB();
       cloudDeleteAppointment(id);
       renderAppointmentList();
-      showAppAlert('Đã xóa lịch hẹn thành công.');
+      showAppAlert('Đã xóa lịch hẹn thành công!');
     }
 
     function openAppointmentRemindModal(apptId) {
@@ -4035,7 +4065,7 @@
     function removeVietnameseTones(str) {
       str = str || '';
       str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, 'a');
-      str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, 'e');
+      str = str.replace(/è|é|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, 'e');
       str = str.replace(/ì|í|ị|ỉ|ĩ/g, 'i');
       str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, 'o');
       str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, 'u');
