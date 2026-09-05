@@ -1355,6 +1355,25 @@
     let gcalTokenClient = null;
     let gcalAccessToken = localStorage.getItem('gcal_access_token') || null;
 
+    // Đánh dấu lần xin token này là do NGƯỜI DÙNG bấm "Kết nối" thủ công hay chỉ là làm mới ngầm
+    // -> để KHÔNG hiện nhầm "Kết nối thành công" mỗi khi app tự âm thầm xin lại token đã hết hạn.
+    let gcalIsManualConnectAttempt = false;
+
+    // Danh sách các nơi đang CHỜ token mới (dùng khi cần làm mới ngầm rồi thử lại thao tác đang dang dở)
+    let gcalTokenWaiters = [];
+
+    function resolvePendingGcalTokenWaiters(token) {
+      const waiters = gcalTokenWaiters;
+      gcalTokenWaiters = [];
+      waiters.forEach(w => w.resolve(token));
+    }
+
+    function rejectPendingGcalTokenWaiters(err) {
+      const waiters = gcalTokenWaiters;
+      gcalTokenWaiters = [];
+      waiters.forEach(w => w.reject(err));
+    }
+
     function initGoogleCalendarClient() {
       if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
         return;
@@ -1369,13 +1388,48 @@
               localStorage.setItem('gcal_access_token', gcalAccessToken);
               localStorage.setItem('gcal_connected', 'true');
               renderGoogleCalendarBox();
-              showAppAlert("Kết nối Google Calendar thành công!");
+              // CHỈ báo "Kết nối thành công" khi đây là lần người dùng chủ động bấm nút kết nối,
+              // không hiện khi app chỉ đang âm thầm làm mới token đã hết hạn phía sau.
+              if (gcalIsManualConnectAttempt) {
+                showAppAlert("Kết nối Google Calendar thành công!");
+              }
+              gcalIsManualConnectAttempt = false;
+              resolvePendingGcalTokenWaiters(gcalAccessToken);
+            } else {
+              gcalIsManualConnectAttempt = false;
+              rejectPendingGcalTokenWaiters(new Error('Không nhận được access token.'));
             }
+          },
+          error_callback: (err) => {
+            console.error('Lỗi xin quyền Google Calendar:', err);
+            if (gcalIsManualConnectAttempt) {
+              showAppAlert("Không thể kết nối Google Calendar. Vui lòng thử lại.");
+            }
+            gcalIsManualConnectAttempt = false;
+            rejectPendingGcalTokenWaiters(err);
           },
         });
       } catch (err) {
         console.error("Lỗi khởi tạo Google Calendar Client:", err);
       }
+    }
+
+    // Xin lại token Google trong ÂM THẦM (không hiện popup hỏi lại nếu phiên đăng nhập vẫn còn hiệu lực),
+    // trả về 1 Promise CHỈ hoàn tất khi token MỚI thật sự về tới nơi (hoặc thất bại hẳn) -
+    // để chỗ gọi có thể "chờ" rồi thử lại thao tác, thay vì báo kết quả sai ngay khi token còn đang xin dở.
+    function requestGcalTokenSilently() {
+      return new Promise((resolve, reject) => {
+        if (!gcalTokenClient) {
+          initGoogleCalendarClient();
+        }
+        if (!gcalTokenClient) {
+          reject(new Error('Thư viện Google Calendar chưa sẵn sàng.'));
+          return;
+        }
+        gcalTokenWaiters.push({ resolve, reject });
+        gcalIsManualConnectAttempt = false;
+        gcalTokenClient.requestAccessToken({ prompt: '' });
+      });
     }
 
     function renderGoogleCalendarBox() {
@@ -1421,6 +1475,7 @@
         initGoogleCalendarClient();
       }
       if (gcalTokenClient) {
+        gcalIsManualConnectAttempt = true;
         gcalTokenClient.requestAccessToken({ prompt: 'consent' });
       } else {
         showAppAlert("Thư viện Google đang tải, vui lòng thử lại sau vài giây.");
@@ -1441,10 +1496,21 @@
     }
 
     // Đẩy / Cập nhật 1 lịch hẹn sang Google Calendar
-    async function syncAppointmentToGoogleCalendar(appt) {
+    // isRetry: đánh dấu đây đã là lần thử lại (sau khi làm mới token) để tránh lặp vô hạn nếu vẫn lỗi
+    async function syncAppointmentToGoogleCalendar(appt, isRetry) {
       const isConnected = localStorage.getItem('gcal_connected') === 'true';
+      if (!isConnected || !appt || !appt.dateTime) return false;
+
       let token = localStorage.getItem('gcal_access_token');
-      if (!isConnected || !token || !appt || !appt.dateTime) return false;
+      if (!token) {
+        // Không có token trong bộ nhớ (có thể do lần trước bị xóa vì hết hạn) - xin lại TRƯỚC, chờ xong mới tiếp tục
+        try {
+          token = await requestGcalTokenSilently();
+        } catch (err) {
+          console.error('Không lấy được token Google Calendar:', err);
+          return false;
+        }
+      }
 
       const startDt = new Date(appt.dateTime);
       if (isNaN(startDt.getTime())) return false;
@@ -1490,10 +1556,14 @@
 
         if (res.status === 401) {
           localStorage.removeItem('gcal_access_token');
-          if (gcalTokenClient) {
-            gcalTokenClient.requestAccessToken({ prompt: '' });
+          if (isRetry) return false; // đã thử lại 1 lần rồi vẫn lỗi - dừng để tránh lặp vô hạn
+          try {
+            await requestGcalTokenSilently(); // CHỜ tới khi có token mới thật sự (khác với trước đây: không chờ)
+            return await syncAppointmentToGoogleCalendar(appt, true); // thử lại đúng 1 lần với token mới
+          } catch (err) {
+            console.error('Làm mới token Google Calendar thất bại:', err);
+            return false;
           }
-          return false;
         }
 
         if (!res.ok) {
@@ -1513,10 +1583,19 @@
     }
 
     // Xóa sự kiện trực tiếp trên Google Calendar (hỗ trợ cả xóa bằng Event ID hoặc tìm kiếm theo Tên nếu mất ID)
-    async function deleteGoogleCalendarEvent(appt) {
+    async function deleteGoogleCalendarEvent(appt, isRetry) {
       const isConnected = localStorage.getItem('gcal_connected') === 'true';
+      if (!isConnected || !appt) return false;
+
       let token = localStorage.getItem('gcal_access_token');
-      if (!isConnected || !token || !appt) return false;
+      if (!token) {
+        try {
+          token = await requestGcalTokenSilently();
+        } catch (err) {
+          console.error('Không lấy được token Google Calendar:', err);
+          return false;
+        }
+      }
 
       try {
         // Cách 1: Xóa trực tiếp bằng gcalEventId nếu có sẵn
@@ -1530,8 +1609,13 @@
 
           if (res.status === 401) {
             localStorage.removeItem('gcal_access_token');
-            if (gcalTokenClient) gcalTokenClient.requestAccessToken({ prompt: '' });
-            return false;
+            if (isRetry) return false;
+            try {
+              await requestGcalTokenSilently();
+              return await deleteGoogleCalendarEvent(appt, true);
+            } catch (err) {
+              return false;
+            }
           }
 
           if (res.status === 204 || res.status === 404 || res.ok) {
@@ -1545,6 +1629,17 @@
         const searchRes = await fetch(searchUrl, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
+
+        if (searchRes.status === 401) {
+          localStorage.removeItem('gcal_access_token');
+          if (isRetry) return false;
+          try {
+            await requestGcalTokenSilently();
+            return await deleteGoogleCalendarEvent(appt, true);
+          } catch (err) {
+            return false;
+          }
+        }
 
         if (searchRes.ok) {
           const data = await searchRes.json();
@@ -2325,21 +2420,44 @@
       await saveDB();
       syncAppointmentToCloud(apptId);
 
-      // Tự động đẩy lịch hẹn sang Google Calendar nếu đã kết nối
+      // Tự động đẩy lịch hẹn sang Google Calendar nếu đã kết nối - giờ đã CHỜ đúng kết quả cuối cùng
+      // (kể cả khi phải làm mới token ngầm), nên có thể báo chính xác có đồng bộ thành công hay không.
       const targetAppt = db.appointments.find(a => a.id === apptId);
-      if (targetAppt) {
-        await syncAppointmentToGoogleCalendar(targetAppt);
+      const gcalConnected = localStorage.getItem('gcal_connected') === 'true';
+      let gcalOk = true;
+      if (targetAppt && gcalConnected) {
+        gcalOk = await syncAppointmentToGoogleCalendar(targetAppt);
       }
 
       closeModal('appointmentModal');
       renderAppointmentList();
-      showAppAlert('Đã lưu lịch hẹn thành công!');
+
+      if (targetAppt && gcalConnected && !gcalOk) {
+        showAppAlert('Đã lưu lịch hẹn trong app thành công.\nTuy nhiên đồng bộ lên Google Calendar bị lỗi (có thể do mất mạng hoặc phiên đăng nhập Google vừa hết hạn). App sẽ tự thử lại vào lần lưu/sửa kế tiếp.');
+      } else {
+        showAppAlert('Đã lưu lịch hẹn thành công!');
+      }
     }
 
     async function markAppointmentStatus(id, status) {
       const appt = (db.appointments || []).find(a => a.id === id);
       if (!appt) return;
       appt.status = status;
+
+      // Fix: trước đây chỉ nút "Xóa" mới dọn dẹp Google Calendar - khiến lịch "Đã đến"/"Đã huỷ"
+      // vẫn còn nguyên trên Google Calendar và điện thoại vẫn đổ chuông nhắc dù việc đã xong/huỷ.
+      if (status === 'done' || status === 'cancelled') {
+        if (appt.gcalEventId) {
+          const gcalDeleted = await deleteGoogleCalendarEvent(appt);
+          if (gcalDeleted) {
+            appt.gcalEventId = null;
+          }
+        }
+      } else if (status === 'pending') {
+        // Khôi phục lại lịch hẹn: đẩy lại lên Google Calendar (nếu đang kết nối) để tiếp tục nhắc
+        await syncAppointmentToGoogleCalendar(appt);
+      }
+
       await saveDB();
       syncAppointmentToCloud(id);
       renderAppointmentList();
