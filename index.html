@@ -2447,11 +2447,13 @@
       // Fix: trước đây chỉ nút "Xóa" mới dọn dẹp Google Calendar - khiến lịch "Đã đến"/"Đã huỷ"
       // vẫn còn nguyên trên Google Calendar và điện thoại vẫn đổ chuông nhắc dù việc đã xong/huỷ.
       if (status === 'done' || status === 'cancelled') {
-        if (appt.gcalEventId) {
-          const gcalDeleted = await deleteGoogleCalendarEvent(appt);
-          if (gcalDeleted) {
-            appt.gcalEventId = null;
-          }
+        // Gọi KHÔNG điều kiện (giống hệt cách "Xóa" đang làm) - deleteGoogleCalendarEvent tự lo:
+        // ưu tiên xóa theo gcalEventId nếu có, nếu không có thì tự tìm theo Tên/SĐT để xóa dự phòng.
+        // (Trước đây có thêm điều kiện "if (appt.gcalEventId)" bọc ngoài khiến những lịch hẹn
+        // chưa lưu được ID sẽ bị bỏ qua hoàn toàn, không rơi vào được nhánh tìm dự phòng đó.)
+        const gcalDeleted = await deleteGoogleCalendarEvent(appt);
+        if (gcalDeleted) {
+          appt.gcalEventId = null;
         }
       } else if (status === 'pending') {
         // Khôi phục lại lịch hẹn: đẩy lại lên Google Calendar (nếu đang kết nối) để tiếp tục nhắc
