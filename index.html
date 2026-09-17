@@ -2061,6 +2061,12 @@
       appointments: []
     };
 
+    // Đánh dấu mốc thời gian có thay đổi dữ liệu thực tế
+    function markDataChanged() {
+      if (!db.brand) db.brand = {};
+      db.brand.lastDataModifiedTime = Date.now();
+    }
+
     async function saveDB() {
       try {
         await localforage.setItem('na_pmu_db', db);
@@ -2086,6 +2092,7 @@
         if (!db.brand.logo || db.brand.logo.includes('...')) db.brand.logo = defaultBrandLogo;
         if (!db.brand.msgTemplate) db.brand.msgTemplate = defaultReminderTemplate;
         if (db.brand.lastExportDate === undefined) db.brand.lastExportDate = null;
+        if (db.brand.lastDataModifiedTime === undefined) db.brand.lastDataModifiedTime = null;
         if (!db.customers) db.customers = [];
         if (!db.appointments) db.appointments = [];
 
@@ -2358,6 +2365,7 @@
       });
 
       if (changedCustIds.size > 0 || changedApptIds.length > 0) {
+        markDataChanged();
         await saveDB();
         changedCustIds.forEach(id => syncCustomerToCloud(id));
         changedApptIds.forEach(id => syncAppointmentToCloud(id));
@@ -2439,6 +2447,7 @@
         });
       }
 
+      markDataChanged();
       await saveDB();
       syncAppointmentToCloud(apptId);
 
@@ -2479,6 +2488,7 @@
         if (newGcalEventId !== undefined) liveAppt.gcalEventId = newGcalEventId;
       }
 
+      markDataChanged();
       await saveDB();
       syncAppointmentToCloud(id);
       renderAppointmentList();
@@ -2518,6 +2528,7 @@
       }
 
       db.appointments = (db.appointments || []).filter(a => a.id !== id);
+      markDataChanged();
       await saveDB();
       cloudDeleteAppointment(id);
       renderAppointmentList();
@@ -2865,26 +2876,35 @@
       if (tabId === 'revenue') renderRevenue();
     }
 
-    const BACKUP_REMINDER_DAYS = 7;
+    // Số ngày cho phép trước khi nhắc sao lưu lại (14 ngày = 2 tuần)
+    const BACKUP_REMINDER_DAYS = 14;
 
     function renderBackupReminder() {
       const el = document.getElementById('backupReminderBanner');
       if (!el) return;
 
+      // Không có khách hàng thì chưa cần nhắc sao lưu
       if (!db.customers || db.customers.length === 0) {
         el.style.display = 'none';
         return;
       }
 
-      const lastExport = db.brand && db.brand.lastExportDate ? new Date(db.brand.lastExportDate) : null;
+      const lastExportStr = db.brand && db.brand.lastExportDate;
+      const lastExportTime = lastExportStr ? new Date(lastExportStr).getTime() : 0;
+      const lastModifiedTime = (db.brand && db.brand.lastDataModifiedTime) || 0;
+
       let daysSince = Infinity;
-      if (lastExport && !isNaN(lastExport.getTime())) {
-        daysSince = Math.floor((new Date() - lastExport) / (1000 * 60 * 60 * 24));
+      if (lastExportTime && !isNaN(lastExportTime)) {
+        daysSince = Math.floor((Date.now() - lastExportTime) / (1000 * 60 * 60 * 24));
       }
 
-      if (daysSince >= BACKUP_REMINDER_DAYS) {
-        const msg = lastExport
-          ? `Đã ${daysSince} ngày chưa sao lưu dữ liệu. Nên tải file sao lưu để tránh mất dữ liệu nếu đổi máy hoặc xoá bộ nhớ trình duyệt.`
+      // Chỉ coi là có dữ liệu mới nếu chưa từng xuất file HOẶC mốc sửa đổi xảy ra sau lần xuất gần nhất
+      const hasUnsavedChanges = !lastExportTime || (lastModifiedTime > lastExportTime);
+
+      // Chỉ hiển thị cảnh báo nếu đã quá 14 ngày VÀ có dữ liệu mới phát sinh
+      if (daysSince >= BACKUP_REMINDER_DAYS && hasUnsavedChanges) {
+        const msg = lastExportTime
+          ? `Đã ${daysSince} ngày chưa sao lưu và bạn có dữ liệu mới phát sinh. Nên tải file sao lưu để tránh mất dữ liệu nếu đổi máy hoặc xoá bộ nhớ trình duyệt.`
           : `Bạn chưa từng sao lưu dữ liệu! Dữ liệu chỉ đang lưu trên thiết bị này — hãy tải file sao lưu ngay để phòng mất dữ liệu.`;
         el.innerHTML = `
           <div class="card" style="border: 1px solid var(--warning); background: rgba(243, 156, 18, 0.1); margin-bottom: 14px; display: flex; align-items: center; gap: 10px;">
@@ -3002,6 +3022,7 @@
 
       const idsToDelete = Array.from(selectedCustomerIds);
       db.customers = db.customers.filter(c => !selectedCustomerIds.has(c.id));
+      markDataChanged();
       await saveDB();
       idsToDelete.forEach(id => cloudDeleteCustomer(id));
 
@@ -3334,6 +3355,7 @@
         if (session) {
           session.warrantyDone = !session.warrantyDone;
           session.warrantyDate = session.warrantyDone ? getTodayDateTimeString() : null;
+          markDataChanged();
           saveDB();
           syncCustomerToCloud(custId);
           renderWarrantyList();
@@ -3685,6 +3707,7 @@
         savedCustomerId = newCustomer.id;
       }
 
+      markDataChanged();
       await saveDB();
       if (savedCustomerId) syncCustomerToCloud(savedCustomerId);
       closeModal('customerModal');
@@ -4054,6 +4077,7 @@
     async function deleteCustomer(custId) {
       if (await showAppConfirm('CẢNH BÁO: Bạn có chắc chắn muốn xóa toàn bộ hồ sơ của khách hàng này không?')) {
         db.customers = db.customers.filter(c => c.id !== custId);
+        markDataChanged();
         await saveDB();
         cloudDeleteCustomer(custId);
         closeModal('customerDetailModal');
@@ -4112,7 +4136,6 @@
       let label = '';
 
       if (presetType === 'this_week') {
-        // Tuần tính từ Thứ Hai đến Chủ Nhật
         const dayOfWeek = (now.getDay() + 6) % 7;
         start.setDate(now.getDate() - dayOfWeek);
         end.setDate(start.getDate() + 6);
@@ -4181,13 +4204,11 @@
       const dateRangeDisplay = customLabel || `${formatDateDMY(startStr)} đến ${formatDateDMY(endStr)}`;
       document.getElementById('filteredRevResult').innerText = `Tổng thực thu (${dateRangeDisplay}): ${formatMoney(total)}`;
 
-      // Cập nhật tiêu đề hiển thị rõ kỳ thống kê
       const sTitleEl = document.getElementById('serviceStatsTitle');
       const cTitleEl = document.getElementById('customerRevTitle');
       if (sTitleEl) sTitleEl.innerHTML = `<i class="fa-solid fa-chart-pie"></i> Thống kê dịch vụ (${dateRangeDisplay})`;
       if (cTitleEl) cTitleEl.innerHTML = `<i class="fa-solid fa-users"></i> Doanh thu theo khách hàng (${dateRangeDisplay})`;
 
-      // Render danh sách loại dịch vụ
       let servHtml = '';
       for (let s in serviceMap) {
         servHtml += `
@@ -4199,7 +4220,6 @@
       }
       document.getElementById('serviceStatsList').innerHTML = servHtml || '<div style="font-size: 12px; color: var(--text-muted); padding: 6px 0;">Không có phát sinh dịch vụ trong kỳ này.</div>';
 
-      // Render danh sách khách hàng
       let custHtml = '';
       for (let name in customerMap) {
         custHtml += `
@@ -4234,7 +4254,6 @@
       document.getElementById('revToday').innerText = formatMoney(revToday);
       document.getElementById('revMonth').innerText = formatMoney(revMonth);
 
-      // Mặc định khi mở tab: hiển thị riêng cho tháng này
       const now = new Date();
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -4392,6 +4411,7 @@
         }
       }
 
+      markDataChanged();
       await saveDB();
       syncCustomerToCloud(custId);
       closeModal('paymentQrModal');
@@ -4483,6 +4503,7 @@
         if (importedDB && importedDB.customers) {
           db = importedDB;
           if (!db.appointments) db.appointments = [];
+          markDataChanged();
           await saveDB();
           renderHome();
           renderCustomerList();
