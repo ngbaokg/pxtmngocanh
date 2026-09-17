@@ -511,6 +511,35 @@
       color: var(--primary-gold);
     }
 
+    /* Quick Filter Chips (Doanh thu) */
+    .rev-preset-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .rev-preset-btn {
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 8px 4px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+    .rev-preset-btn:hover {
+      border-color: var(--primary-gold);
+      color: var(--primary-gold);
+    }
+    .rev-preset-btn.active {
+      background: rgba(197, 160, 89, 0.25);
+      border-color: var(--primary-gold);
+      color: var(--primary-gold);
+    }
+
     /* Warranty Action Button */
     .btn-warranty-status {
       padding: 6px 10px;
@@ -816,15 +845,25 @@
         </div>
 
         <div class="card">
-          <h4 style="font-size: 14px; margin-bottom: 12px;"><i class="fa-solid fa-filter"></i> Lọc theo khoảng ngày</h4>
+          <h4 style="font-size: 14px; margin-bottom: 10px;"><i class="fa-solid fa-bolt"></i> Xem nhanh doanh thu</h4>
+          <div class="rev-preset-grid">
+            <button type="button" class="rev-preset-btn" onclick="applyRevenuePreset('this_week', this)">Tuần này</button>
+            <button type="button" class="rev-preset-btn" onclick="applyRevenuePreset('last_week', this)">Tuần trước</button>
+            <button type="button" class="rev-preset-btn active" id="btnPresetThisMonth" onclick="applyRevenuePreset('this_month', this)">Tháng này</button>
+            <button type="button" class="rev-preset-btn" onclick="applyRevenuePreset('last_month', this)">Tháng trước</button>
+            <button type="button" class="rev-preset-btn" onclick="applyRevenuePreset('this_year', this)">Năm nay</button>
+            <button type="button" class="rev-preset-btn" onclick="applyRevenuePreset('last_year', this)">Năm trước</button>
+          </div>
+
+          <h4 style="font-size: 14px; margin-top: 14px; margin-bottom: 10px;"><i class="fa-solid fa-filter"></i> Lọc theo khoảng ngày tùy chọn</h4>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
             <div>
               <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 5px;">Từ ngày</label>
-              <input type="date" id="revStartDate" class="form-control">
+              <input type="date" id="revStartDate" class="form-control" onchange="clearRevenuePresetActive()">
             </div>
             <div>
               <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 5px;">Đến ngày</label>
-              <input type="date" id="revEndDate" class="form-control">
+              <input type="date" id="revEndDate" class="form-control" onchange="clearRevenuePresetActive()">
             </div>
           </div>
           <button class="btn-gold" style="padding: 10px;" onclick="filterRevenue()"><i class="fa-solid fa-magnifying-glass"></i> Xem thống kê</button>
@@ -832,12 +871,12 @@
         </div>
 
         <div class="card">
-          <h4 style="font-size: 14px; margin-bottom: 10px;">Thống kê theo loại dịch vụ</h4>
+          <h4 style="font-size: 14px; margin-bottom: 10px;" id="serviceStatsTitle">Thống kê theo loại dịch vụ</h4>
           <div id="serviceStatsList"></div>
         </div>
 
         <div class="card">
-          <h4 style="font-size: 14px; margin-bottom: 10px;">Doanh thu theo từng khách hàng</h4>
+          <h4 style="font-size: 14px; margin-bottom: 10px;" id="customerRevTitle">Doanh thu theo từng khách hàng</h4>
           <div id="customerRevList"></div>
         </div>
       </div>
@@ -1346,20 +1385,14 @@
     });
 
     /* ============================================================================
-       GOOGLE CALENDAR OAUTH & API (TOÀN QUYỀN VÀ TỰ ĐỘNG DỌN DẸP LỊCH)
+       GOOGLE CALENDAR OAUTH & API
        ============================================================================ */
     const GCAL_CLIENT_ID = "716343551019-gvshb80eamtcpap1gsvji2lbsmiohhkm.apps.googleusercontent.com";
-    // Đổi sang Scope toàn quyền calendar để hỗ trợ xóa triệt để
     const GCAL_SCOPES = "https://www.googleapis.com/auth/calendar";
 
     let gcalTokenClient = null;
     let gcalAccessToken = localStorage.getItem('gcal_access_token') || null;
-
-    // Đánh dấu lần xin token này là do NGƯỜI DÙNG bấm "Kết nối" thủ công hay chỉ là làm mới ngầm
-    // -> để KHÔNG hiện nhầm "Kết nối thành công" mỗi khi app tự âm thầm xin lại token đã hết hạn.
     let gcalIsManualConnectAttempt = false;
-
-    // Danh sách các nơi đang CHỜ token mới (dùng khi cần làm mới ngầm rồi thử lại thao tác đang dang dở)
     let gcalTokenWaiters = [];
 
     function resolvePendingGcalTokenWaiters(token) {
@@ -1388,8 +1421,6 @@
               localStorage.setItem('gcal_access_token', gcalAccessToken);
               localStorage.setItem('gcal_connected', 'true');
               renderGoogleCalendarBox();
-              // CHỈ báo "Kết nối thành công" khi đây là lần người dùng chủ động bấm nút kết nối,
-              // không hiện khi app chỉ đang âm thầm làm mới token đã hết hạn phía sau.
               if (gcalIsManualConnectAttempt) {
                 showAppAlert("Kết nối Google Calendar thành công!");
               }
@@ -1414,9 +1445,6 @@
       }
     }
 
-    // Xin lại token Google trong ÂM THẦM (không hiện popup hỏi lại nếu phiên đăng nhập vẫn còn hiệu lực),
-    // trả về 1 Promise CHỈ hoàn tất khi token MỚI thật sự về tới nơi (hoặc thất bại hẳn) -
-    // để chỗ gọi có thể "chờ" rồi thử lại thao tác, thay vì báo kết quả sai ngay khi token còn đang xin dở.
     function requestGcalTokenSilently() {
       return new Promise((resolve, reject) => {
         if (!gcalTokenClient) {
@@ -1495,15 +1523,12 @@
       showAppAlert("Đã ngắt kết nối Google Calendar.");
     }
 
-    // Đẩy / Cập nhật 1 lịch hẹn sang Google Calendar
-    // isRetry: đánh dấu đây đã là lần thử lại (sau khi làm mới token) để tránh lặp vô hạn nếu vẫn lỗi
     async function syncAppointmentToGoogleCalendar(appt, isRetry) {
       const isConnected = localStorage.getItem('gcal_connected') === 'true';
       if (!isConnected || !appt || !appt.dateTime) return false;
 
       let token = localStorage.getItem('gcal_access_token');
       if (!token) {
-        // Không có token trong bộ nhớ (có thể do lần trước bị xóa vì hết hạn) - xin lại TRƯỚC, chờ xong mới tiếp tục
         try {
           token = await requestGcalTokenSilently();
         } catch (err) {
@@ -1514,7 +1539,7 @@
 
       const startDt = new Date(appt.dateTime);
       if (isNaN(startDt.getTime())) return false;
-      const endDt = new Date(startDt.getTime() + 90 * 60 * 1000); // 90 phút
+      const endDt = new Date(startDt.getTime() + 90 * 60 * 1000);
 
       const eventPayload = {
         summary: `[Hẹn Khách] ${appt.name} - ${appt.service || 'Phun xăm'}`,
@@ -1556,10 +1581,10 @@
 
         if (res.status === 401) {
           localStorage.removeItem('gcal_access_token');
-          if (isRetry) return false; // đã thử lại 1 lần rồi vẫn lỗi - dừng để tránh lặp vô hạn
+          if (isRetry) return false;
           try {
-            await requestGcalTokenSilently(); // CHỜ tới khi có token mới thật sự (khác với trước đây: không chờ)
-            return await syncAppointmentToGoogleCalendar(appt, true); // thử lại đúng 1 lần với token mới
+            await requestGcalTokenSilently();
+            return await syncAppointmentToGoogleCalendar(appt, true);
           } catch (err) {
             console.error('Làm mới token Google Calendar thất bại:', err);
             return false;
@@ -1573,17 +1598,9 @@
         }
 
         const createdEvent = await res.json();
-        // Luôn ghi vào bản MỚI NHẤT hiện có trong db.appointments (không ghi thẳng vào biến `appt`
-        // truyền vào), vì trong lúc chờ Google Calendar phản hồi (có thể mất vài trăm ms tới vài giây),
-        // dữ liệu từ cloud đồng bộ về có thể đã "vọng" tới và THAY THẾ object cũ trong mảng -
-        // nếu ghi vào object cũ (đã bị thay ra khỏi mảng), gcalEventId sẽ bị lưu vào chỗ không ai đọc tới.
         const liveAppt = db.appointments.find(a => a.id === appt.id) || appt;
         liveAppt.gcalEventId = createdEvent.id;
         await saveDB();
-        // FIX QUAN TRỌNG: phải đẩy NGAY lên cloud sau khi có gcalEventId, nếu không bản trên
-        // Firebase sẽ mãi thiếu trường này -> lần đồng bộ real-time kế tiếp từ cloud vọng về
-        // sẽ ghi đè mất gcalEventId đang có trên máy (dù mới lưu xong), khiến các lần
-        // xóa/huỷ hẹn sau đó phải dựa vào cách tìm-theo-tên kém tin cậy hơn.
         syncAppointmentToCloud(liveAppt.id);
         return true;
       } catch (err) {
@@ -1592,7 +1609,6 @@
       }
     }
 
-    // Xóa sự kiện trực tiếp trên Google Calendar (hỗ trợ cả xóa bằng Event ID hoặc tìm kiếm theo Tên nếu mất ID)
     async function deleteGoogleCalendarEvent(appt, isRetry) {
       const isConnected = localStorage.getItem('gcal_connected') === 'true';
       if (!isConnected || !appt) return false;
@@ -1608,7 +1624,6 @@
       }
 
       try {
-        // Cách 1: Xóa trực tiếp bằng gcalEventId nếu có sẵn
         if (appt.gcalEventId) {
           const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${appt.gcalEventId}`, {
             method: 'DELETE',
@@ -1633,7 +1648,6 @@
           }
         }
 
-        // Cách 2: Tìm kiếm sự kiện theo tên và SĐT trên Google Calendar để xóa triệt để
         const searchKeyword = appt.name;
         const searchUrl = `https://www.googleapis.com/calendar/v3/calendars/primary/events?q=${encodeURIComponent(searchKeyword)}`;
         const searchRes = await fetch(searchUrl, {
@@ -1655,7 +1669,6 @@
           const data = await searchRes.json();
           if (data.items && data.items.length > 0) {
             for (const item of data.items) {
-              // Khớp tên khách hoặc số điện thoại trong nội dung
               if ((item.summary && item.summary.includes(appt.name)) || 
                   (item.description && appt.phone && item.description.includes(appt.phone))) {
                 await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${item.id}`, {
@@ -1673,7 +1686,6 @@
       return false;
     }
 
-    // Đẩy toàn bộ danh sách lịch hẹn đang có lên Google Calendar
     async function syncAllAppointmentsToGCal() {
       const list = (db.appointments || []).filter(a => a.status === 'pending');
       if (list.length === 0) {
@@ -2214,7 +2226,7 @@
       };
     }
 
-    const AUTO_REMIND_DAYS_THRESHOLD = 2; // đồng bộ với yêu cầu: chỉ nhắc khi còn 2 ngày là tới hạn
+    const AUTO_REMIND_DAYS_THRESHOLD = 2;
 
     function getAutoReminderCandidates() {
       let candidates = [];
@@ -2430,8 +2442,6 @@
       await saveDB();
       syncAppointmentToCloud(apptId);
 
-      // Tự động đẩy lịch hẹn sang Google Calendar nếu đã kết nối - giờ đã CHỜ đúng kết quả cuối cùng
-      // (kể cả khi phải làm mới token ngầm), nên có thể báo chính xác có đồng bộ thành công hay không.
       const targetAppt = db.appointments.find(a => a.id === apptId);
       const gcalConnected = localStorage.getItem('gcal_connected') === 'true';
       let gcalOk = true;
@@ -2454,26 +2464,15 @@
       if (!appt) return;
       appt.status = status;
 
-      // undefined = không cần đổi gcalEventId; null = đã xóa xong trên Google Calendar
       let newGcalEventId;
 
-      // Fix: trước đây chỉ nút "Xóa" mới dọn dẹp Google Calendar - khiến lịch "Đã đến"/"Đã huỷ"
-      // vẫn còn nguyên trên Google Calendar và điện thoại vẫn đổ chuông nhắc dù việc đã xong/huỷ.
       if (status === 'done' || status === 'cancelled') {
-        // Gọi KHÔNG điều kiện (giống hệt cách "Xóa" đang làm) - deleteGoogleCalendarEvent tự lo:
-        // ưu tiên xóa theo gcalEventId nếu có, nếu không có thì tự tìm theo Tên/SĐT để xóa dự phòng.
         const gcalDeleted = await deleteGoogleCalendarEvent(appt);
         if (gcalDeleted) newGcalEventId = null;
       } else if (status === 'pending') {
-        // Khôi phục lại lịch hẹn: đẩy lại lên Google Calendar (nếu đang kết nối) để tiếp tục nhắc
-        // (hàm này tự lo ghi gcalEventId vào bản mới nhất + đẩy cloud ngay khi thành công)
         await syncAppointmentToGoogleCalendar(appt);
       }
 
-      // FIX QUAN TRỌNG: áp lại trạng thái cuối cùng vào bản MỚI NHẤT hiện có trong mảng, thay vì
-      // chỉ dựa vào biến `appt` lấy từ đầu hàm - vì trong lúc chờ các bước gọi Google Calendar ở trên
-      // (có thể mất vài giây), dữ liệu đồng bộ từ cloud có thể đã "vọng" về và thay thế object đó
-      // trong mảng, khiến thay đổi trạng thái bị ghi vào 1 bản đã bị bỏ, không được lưu thật sự.
       const liveAppt = db.appointments.find(a => a.id === id);
       if (liveAppt) {
         liveAppt.status = status;
@@ -2510,13 +2509,11 @@
       }
     }
 
-    // Xóa lịch hẹn trên app kèm tự động xóa trên Google Calendar
     async function deleteAppointment(id) {
       if (!(await showAppConfirm('Bạn có chắc muốn xóa lịch hẹn này không?'))) return;
       
       const appt = (db.appointments || []).find(a => a.id === id);
       if (appt) {
-        // Gọi hàm xóa trên Google Calendar trước
         await deleteGoogleCalendarEvent(appt);
       }
 
@@ -4084,59 +4081,174 @@
       document.getElementById('revenueContent').style.display = 'none';
     }
 
+    /* ============================================================================
+       QUẢN LÝ DOANH THU & THỐNG KÊ CHI TIẾT
+       ============================================================================ */
+    function formatDateYMD(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function formatDateDMY(ymd) {
+      if (!ymd) return '';
+      const parts = ymd.split('-');
+      if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      return ymd;
+    }
+
+    function clearRevenuePresetActive() {
+      document.querySelectorAll('.rev-preset-btn').forEach(btn => btn.classList.remove('active'));
+    }
+
+    function applyRevenuePreset(presetType, btnEl) {
+      clearRevenuePresetActive();
+      if (btnEl) btnEl.classList.add('active');
+
+      const now = new Date();
+      let start = new Date();
+      let end = new Date();
+      let label = '';
+
+      if (presetType === 'this_week') {
+        // Tuần tính từ Thứ Hai đến Chủ Nhật
+        const dayOfWeek = (now.getDay() + 6) % 7;
+        start.setDate(now.getDate() - dayOfWeek);
+        end.setDate(start.getDate() + 6);
+        label = 'Tuần này';
+      } else if (presetType === 'last_week') {
+        const dayOfWeek = (now.getDay() + 6) % 7;
+        start.setDate(now.getDate() - dayOfWeek - 7);
+        end.setDate(start.getDate() + 6);
+        label = 'Tuần trước';
+      } else if (presetType === 'this_month') {
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        label = `Tháng ${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+      } else if (presetType === 'last_month') {
+        start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        end = new Date(now.getFullYear(), now.getMonth(), 0);
+        label = `Tháng ${String(start.getMonth() + 1).padStart(2, '0')}/${start.getFullYear()}`;
+      } else if (presetType === 'this_year') {
+        start = new Date(now.getFullYear(), 0, 1);
+        end = new Date(now.getFullYear(), 11, 31);
+        label = `Năm ${now.getFullYear()}`;
+      } else if (presetType === 'last_year') {
+        start = new Date(now.getFullYear() - 1, 0, 1);
+        end = new Date(now.getFullYear() - 1, 11, 31);
+        label = `Năm ${now.getFullYear() - 1}`;
+      }
+
+      const startYmd = formatDateYMD(start);
+      const endYmd = formatDateYMD(end);
+
+      document.getElementById('revStartDate').value = startYmd;
+      document.getElementById('revEndDate').value = endYmd;
+
+      renderFilteredRevenue(startYmd, endYmd, label);
+    }
+
+    function renderFilteredRevenue(startStr, endStr, customLabel = null) {
+      let total = 0;
+      let serviceMap = {};
+      let customerMap = {};
+
+      if (db.customers) {
+        db.customers.forEach(c => {
+          let custRangeTotal = 0;
+          if (c.sessions) {
+            c.sessions.forEach(s => {
+              let sDateOnly = s.date ? s.date.substring(0, 10) : '';
+              if (sDateOnly >= startStr && sDateOnly <= endStr) {
+                let p = (s.paid !== undefined) ? s.paid : (s.price || 0);
+                total += p;
+                custRangeTotal += p;
+
+                let sName = s.service || 'Khác';
+                if (!serviceMap[sName]) serviceMap[sName] = { count: 0, total: 0 };
+                serviceMap[sName].count += 1;
+                serviceMap[sName].total += p;
+              }
+            });
+          }
+          if (custRangeTotal > 0) {
+            customerMap[c.name] = custRangeTotal;
+          }
+        });
+      }
+
+      const dateRangeDisplay = customLabel || `${formatDateDMY(startStr)} đến ${formatDateDMY(endStr)}`;
+      document.getElementById('filteredRevResult').innerText = `Tổng thực thu (${dateRangeDisplay}): ${formatMoney(total)}`;
+
+      // Cập nhật tiêu đề hiển thị rõ kỳ thống kê
+      const sTitleEl = document.getElementById('serviceStatsTitle');
+      const cTitleEl = document.getElementById('customerRevTitle');
+      if (sTitleEl) sTitleEl.innerHTML = `<i class="fa-solid fa-chart-pie"></i> Thống kê dịch vụ (${dateRangeDisplay})`;
+      if (cTitleEl) cTitleEl.innerHTML = `<i class="fa-solid fa-users"></i> Doanh thu theo khách hàng (${dateRangeDisplay})`;
+
+      // Render danh sách loại dịch vụ
+      let servHtml = '';
+      for (let s in serviceMap) {
+        servHtml += `
+          <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color); font-size: 13px;">
+            <span>${escapeHtml(s)} (<strong>${serviceMap[s].count}</strong> lượt)</span>
+            <span style="font-weight: bold; color: var(--primary-gold);">${formatMoney(serviceMap[s].total)}</span>
+          </div>
+        `;
+      }
+      document.getElementById('serviceStatsList').innerHTML = servHtml || '<div style="font-size: 12px; color: var(--text-muted); padding: 6px 0;">Không có phát sinh dịch vụ trong kỳ này.</div>';
+
+      // Render danh sách khách hàng
+      let custHtml = '';
+      for (let name in customerMap) {
+        custHtml += `
+          <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color); font-size: 13px;">
+            <span>${escapeHtml(name)}</span>
+            <span style="font-weight: bold;">${formatMoney(customerMap[name])}</span>
+          </div>
+        `;
+      }
+      document.getElementById('customerRevList').innerHTML = custHtml || '<div style="font-size: 12px; color: var(--text-muted); padding: 6px 0;">Không có khách làm trong kỳ này.</div>';
+    }
+
     function renderRevenue() {
       let todayStr = getTodayDateTimeString().substring(0, 10);
       let currentMonthStr = todayStr.substring(0, 7);
 
       let revToday = 0;
       let revMonth = 0;
-      let serviceMap = {};
-      let customerMap = {};
 
       if (db.customers) {
         db.customers.forEach(c => {
-          let custTotal = 0;
           if (c.sessions) {
             c.sessions.forEach(s => {
               let p = (s.paid !== undefined) ? s.paid : (s.price || 0);
-              custTotal += p;
-
               if (s.date && s.date.startsWith(todayStr)) revToday += p;
               if (s.date && s.date.startsWith(currentMonthStr)) revMonth += p;
-
-              if (!serviceMap[s.service]) serviceMap[s.service] = { count: 0, total: 0 };
-              serviceMap[s.service].count += 1;
-              serviceMap[s.service].total += p;
             });
           }
-          customerMap[c.name] = custTotal;
         });
       }
 
       document.getElementById('revToday').innerText = formatMoney(revToday);
       document.getElementById('revMonth').innerText = formatMoney(revMonth);
 
-      let servHtml = '';
-      for (let s in serviceMap) {
-        servHtml += `
-          <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color); font-size: 13px;">
-            <span>${s} (<strong>${serviceMap[s].count}</strong> lượt)</span>
-            <span style="font-weight: bold; color: var(--primary-gold);">${formatMoney(serviceMap[s].total)}</span>
-          </div>
-        `;
-      }
-      document.getElementById('serviceStatsList').innerHTML = servHtml || '<div style="font-size: 12px; color: var(--text-muted);">Chưa có dữ liệu</div>';
+      // Mặc định khi mở tab: hiển thị riêng cho tháng này
+      const now = new Date();
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const startStr = formatDateYMD(firstDay);
+      const endStr = formatDateYMD(lastDay);
 
-      let custHtml = '';
-      for (let name in customerMap) {
-        custHtml += `
-          <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color); font-size: 13px;">
-            <span>${name}</span>
-            <span style="font-weight: bold;">${formatMoney(customerMap[name])}</span>
-          </div>
-        `;
-      }
-      document.getElementById('customerRevList').innerHTML = custHtml || '<div style="font-size: 12px; color: var(--text-muted);">Chưa có dữ liệu</div>';
+      document.getElementById('revStartDate').value = startStr;
+      document.getElementById('revEndDate').value = endStr;
+
+      clearRevenuePresetActive();
+      const btnThisMonth = document.getElementById('btnPresetThisMonth');
+      if (btnThisMonth) btnThisMonth.classList.add('active');
+
+      renderFilteredRevenue(startStr, endStr, `Tháng ${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`);
     }
 
     function filterRevenue() {
@@ -4147,25 +4259,13 @@
         showAppAlert('Vui lòng chọn đầy đủ ngày bắt đầu và kết thúc!');
         return;
       }
-
-      let startFormatted = start.split('-').reverse().join('/');
-      let endFormatted = end.split('-').reverse().join('/');
-
-      let total = 0;
-      if (db.customers) {
-        db.customers.forEach(c => {
-          if (c.sessions) {
-            c.sessions.forEach(s => {
-              let sDateOnly = s.date ? s.date.substring(0, 10) : '';
-              if (sDateOnly >= start && sDateOnly <= end) {
-                total += ((s.paid !== undefined) ? s.paid : (s.price || 0));
-              }
-            });
-          }
-        });
+      if (start > end) {
+        showAppAlert('Ngày bắt đầu không được lớn hơn ngày kết thúc!');
+        return;
       }
 
-      document.getElementById('filteredRevResult').innerText = `Tổng thực thu (${startFormatted} đến ${endFormatted}): ${formatMoney(total)}`;
+      clearRevenuePresetActive();
+      renderFilteredRevenue(start, end);
     }
 
     const VIETQR_BANKS = [
@@ -4205,7 +4305,7 @@
     function removeVietnameseTones(str) {
       str = str || '';
       str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, 'a');
-      str = str.replace(/è|é|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, 'e');
+      str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, 'e');
       str = str.replace(/ì|í|ị|ỉ|ĩ/g, 'i');
       str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, 'o');
       str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, 'u');
